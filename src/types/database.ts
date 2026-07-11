@@ -103,8 +103,11 @@ export interface DailyClosing {
   expected_cash: number;
   physical_cash: number;
   physical_card: number;
+  physical_eft: number;
   cash_diff: number;
   card_diff: number;
+  eft_diff: number;
+  eft_revenue: number;
 }
 
 export interface DashboardMetrics {
@@ -117,6 +120,7 @@ export interface DashboardMetrics {
   totalTurkcellProfit: number;
   totalExpenses: number;
   totalCihazProfit: number;
+  totalAksesuarProfit: number;
 }
 
 export interface ChartPoint {

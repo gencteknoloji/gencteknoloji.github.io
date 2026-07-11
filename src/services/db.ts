@@ -285,100 +285,44 @@ export const dbService = {
   },
 
   async getSales(): Promise<Sale[]> {
-    const sales = await db.all<Sale>('SELECT * FROM sales ORDER BY id DESC');
+    const [sales, allItems] = await Promise.all([
+      db.all<Sale>('SELECT * FROM sales ORDER BY id DESC'),
+      db.all<SaleItem>('SELECT id, sale_id, product_id, quantity, price, name FROM sale_items')
+    ]);
+
+    const itemsBySaleId: Record<string, SaleItem[]> = {};
+    for (const item of allItems) {
+      const saleId = (item as any).sale_id;
+      if (!itemsBySaleId[saleId]) {
+        itemsBySaleId[saleId] = [];
+      }
+      itemsBySaleId[saleId].push(item);
+    }
+
     for (const s of sales) {
-      s.items = await db.all<SaleItem>('SELECT id, product_id, quantity, price, name FROM sale_items WHERE sale_id = ?', [s.id]);
+      s.items = itemsBySaleId[s.id] || [];
     }
     return sales;
   },
 
   async addSale(sale: SaleInput) {
-    const saleId = 's_' + Date.now();
-    const saleData = {
-      id: saleId,
-      date: sale.date || new Date().toLocaleDateString('sv-SE'),
-      cari_id: sale.cari_id || 'pesin',
-      total_amount: toNum(sale.total_amount) || 0,
-      payment_method: sale.payment_method || 'Nakit',
-      notes: sale.notes || ''
-    };
-
-    await db.run('BEGIN TRANSACTION');
-    try {
-      await db.run(
-        `INSERT INTO sales (id, date, cari_id, total_amount, payment_method, notes)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [saleData.id, saleData.date, saleData.cari_id, saleData.total_amount, saleData.payment_method, saleData.notes]
-      );
-
-      for (const item of sale.items) {
-        await db.run(
-          `INSERT INTO sale_items (sale_id, product_id, name, price, quantity)
-           VALUES (?, ?, ?, ?, ?)`,
-          [saleId, item.product_id, item.name, toNum(item.price) || 0, toInt(item.quantity) || 1]
-        );
-
-        const prod = await db.get<{ type: string; stock: number }>('SELECT type, stock FROM products WHERE id = ?', [item.product_id]);
-        if (prod && prod.type !== 'Hizmet') {
-          await db.run('UPDATE products SET stock = GREATEST(0, stock - ?) WHERE id = ?', [item.quantity, item.product_id]);
-        }
-      }
-
-      if (saleData.cari_id !== 'pesin') {
-        const cari = await db.get<{ balance: number }>('SELECT balance FROM cariler WHERE id = ?', [saleData.cari_id]);
-        if (cari) {
-          const newBalance = cari.balance + saleData.total_amount;
-          await db.run('UPDATE cariler SET balance = ? WHERE id = ?', [newBalance, saleData.cari_id]);
-          
-          const txId = 'tx_' + Date.now();
-          await db.run(
-            `INSERT INTO cari_transactions (id, cari_id, date, type, amount, description)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [txId, saleData.cari_id, saleData.date, 'Borç', saleData.total_amount, 'Satış İşlemi']
-          );
-        }
-      }
-
-      await db.run('COMMIT');
-      return { success: true, id: saleId };
-    } catch (e) {
-      await db.run('ROLLBACK');
-      throw e;
+    const client = getSupabaseClient();
+    if (client) {
+      const { data, error } = await client.rpc('add_sale_atomic', { sale_data: sale });
+      if (error) throw new Error(error.message);
+      return data;
     }
+    throw new Error('Supabase client not initialized');
   },
 
   async deleteSale(id: string) {
-    await db.run('BEGIN TRANSACTION');
-    try {
-      const sale = await db.get<Sale>('SELECT * FROM sales WHERE id = ?', [id]);
-      if (!sale) throw new Error('Satış bulunamadı!');
-
-      const items = await db.all('SELECT * FROM sale_items WHERE sale_id = ?', [id]);
-      for (const item of items) {
-        const prod = await db.get<{ type: string }>('SELECT type FROM products WHERE id = ?', [item.product_id]);
-        if (prod && prod.type !== 'Hizmet') {
-          await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
-        }
-      }
-
-      if (sale.cari_id !== 'pesin') {
-        const cari = await db.get<{ balance: number }>('SELECT balance FROM cariler WHERE id = ?', [sale.cari_id]);
-        if (cari) {
-          const newBalance = Math.max(0, cari.balance - sale.total_amount);
-          await db.run('UPDATE cariler SET balance = ? WHERE id = ?', [newBalance, sale.cari_id]);
-          await db.run("DELETE FROM cari_transactions WHERE cari_id = ? AND description = 'Satış İşlemi' AND amount = ?", [sale.cari_id, sale.total_amount]);
-        }
-      }
-
-      await db.run('DELETE FROM sale_items WHERE sale_id = ?', [id]);
-      await db.run('DELETE FROM sales WHERE id = ?', [id]);
-
-      await db.run('COMMIT');
-      return { success: true };
-    } catch (e) {
-      await db.run('ROLLBACK');
-      throw e;
+    const client = getSupabaseClient();
+    if (client) {
+      const { data, error } = await client.rpc('delete_sale_atomic', { p_sale_id: id });
+      if (error) throw new Error(error.message);
+      return data;
     }
+    throw new Error('Supabase client not initialized');
   },
 
   async deleteSaleItem(saleId: string, itemId: number) {
@@ -569,47 +513,74 @@ export const dbService = {
     const tempMonth = new Date();
     tempMonth.setDate(tempMonth.getDate() - 30);
     const thirtyDaysAgoStr = tempMonth.toLocaleDateString('sv-SE');
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('sv-SE');
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('sv-SE');
 
-    const todaySalesRow = await db.get<{ total: number }>('SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE date = ?', [todayStr]);
-    const weekSalesRow = await db.get<{ total: number }>('SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE date >= ?', [sevenDaysAgoStr]);
-    const monthSalesRow = await db.get<{ total: number }>('SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE date >= ?', [thirtyDaysAgoStr]);
-    const totalCariReceivablesRow = await db.get<{ total: number }>('SELECT COALESCE(SUM(balance), 0) as total FROM cariler WHERE balance > 0');
-    const criticalStockCountRow = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM products WHERE category != 'Hizmet' AND stock < 5");
-    const totalSalesCountRow = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM sales');
-    const totalTurkcellProfitRow = await db.get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) as total FROM turkcell_premiums');
-    const totalExpensesRow = await db.get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) as total FROM expenses');
-    
-    const totalProductProfitRow = await db.get<{ total: number }>(`
-      SELECT COALESCE(SUM((s_item.price - prod.purchase_price) * s_item.quantity), 0) as total 
-      FROM sale_items s_item 
-      JOIN products prod ON s_item.product_id = prod.id 
-      JOIN sales s ON s_item.sale_id = s.id 
-      WHERE prod.type = 'Cihaz'
-    `);
+    const [
+      todaySalesRow,
+      weekSalesRow,
+      monthSalesRow,
+      totalCariReceivablesRow,
+      criticalStockCountRow,
+      totalSalesCountRow,
+      totalTurkcellProfitRow,
+      totalExpensesRow,
+      totalProductProfitRow,
+      totalAksesuarProfitRow,
+      weeklySalesRows,
+      monthSalesRows
+    ] = await Promise.all([
+      db.get<{ total: number }>('SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE date = ?', [todayStr]),
+      db.get<{ total: number }>('SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE date >= ?', [sevenDaysAgoStr]),
+      db.get<{ total: number }>('SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE date >= ?', [thirtyDaysAgoStr]),
+      db.get<{ total: number }>('SELECT COALESCE(SUM(balance), 0) as total FROM cariler WHERE balance > 0'),
+      db.get<{ count: number }>("SELECT COUNT(*) as count FROM products WHERE category != 'Hizmet' AND stock < 5"),
+      db.get<{ count: number }>('SELECT COUNT(*) as count FROM sales'),
+      db.get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) as total FROM turkcell_premiums'),
+      db.get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) as total FROM expenses'),
+      db.get<{ total: number }>(`
+        SELECT COALESCE(SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity), 0) as total 
+        FROM sale_items s_item 
+        JOIN products prod ON s_item.product_id = prod.id 
+        JOIN sales s ON s_item.sale_id = s.id 
+        WHERE prod.type = 'Cihaz'
+      `),
+      db.get<{ total: number }>(`
+        SELECT COALESCE(SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity), 0) as total 
+        FROM sale_items s_item 
+        JOIN products prod ON s_item.product_id = prod.id 
+        JOIN sales s ON s_item.sale_id = s.id 
+        WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
+      `),
+      db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [sevenDaysAgoStr]),
+      db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? AND date <= ? GROUP BY date', [startOfMonth, endOfMonth])
+    ]);
+
+    // Map weekly chart in memory
+    const weeklyChartMap: Record<string, number> = {};
+    weeklySalesRows.forEach(r => {
+      weeklyChartMap[r.date] = r.total;
+    });
 
     const weeklyChart: ChartPoint[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dStr = d.toLocaleDateString('sv-SE');
-      const daySalesRow = await db.get<{ total: number }>('SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE date = ?', [dStr]);
       weeklyChart.push({
         date: d.toLocaleDateString('tr-TR', { weekday: 'short' }),
-        amount: daySalesRow ? daySalesRow.total : 0
+        amount: weeklyChartMap[dStr] || 0
       });
     }
 
-    const monthlyChart: ChartPoint[] = [];
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('sv-SE');
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('sv-SE');
-    const monthSalesRows = await db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? AND date <= ? GROUP BY date', [startOfMonth, endOfMonth]);
-    
+    // Map monthly chart in memory
     const monthMap: Record<string, number> = {};
     monthSalesRows.forEach(r => {
       monthMap[r.date] = r.total;
     });
 
+    const monthlyChart: ChartPoint[] = [];
     for (let d = 1; d <= now.getDate(); d++) {
       const dObj = new Date(now.getFullYear(), now.getMonth(), d);
       const dStr = dObj.toLocaleDateString('sv-SE');
@@ -629,7 +600,8 @@ export const dbService = {
         totalSalesCount: totalSalesCountRow ? totalSalesCountRow.count : 0,
         totalTurkcellProfit: totalTurkcellProfitRow ? totalTurkcellProfitRow.total : 0,
         totalExpenses: totalExpensesRow ? totalExpensesRow.total : 0,
-        totalCihazProfit: totalProductProfitRow ? totalProductProfitRow.total : 0
+        totalCihazProfit: totalProductProfitRow ? totalProductProfitRow.total : 0,
+        totalAksesuarProfit: totalAksesuarProfitRow ? totalAksesuarProfitRow.total : 0
       },
       weeklyChart,
       monthlyChart,
@@ -787,17 +759,20 @@ export const dbService = {
     const expCash = toNum(closing.expected_cash) || 0;
     const physCash = toNum(closing.physical_cash) || 0;
     const physCard = toNum(closing.physical_card) || 0;
+    const physEft = toNum(closing.physical_eft) || 0;
     const cashDiff = toNum(closing.cash_diff) || 0;
     const cardDiff = toNum(closing.card_diff) || 0;
+    const eftDiff = toNum(closing.eft_diff) || 0;
+    const eftRev = toNum(closing.eft_revenue) || 0;
 
     // Check if duplicate date exists
     const existing = await db.get<{ id: string }>('SELECT id FROM daily_closings WHERE date = ?', [dateVal]);
     if (existing && existing.id !== id) {
       await db.run(
         `UPDATE daily_closings 
-         SET cash_revenue = ?, card_revenue = ?, kontor_sales = ?, fatura_payments = ?, today_expenses = ?, expected_cash = ?, physical_cash = ?, physical_card = ?, cash_diff = ?, card_diff = ? 
+         SET cash_revenue = ?, card_revenue = ?, kontor_sales = ?, fatura_payments = ?, today_expenses = ?, expected_cash = ?, physical_cash = ?, physical_card = ?, physical_eft = ?, cash_diff = ?, card_diff = ?, eft_diff = ?, eft_revenue = ? 
          WHERE id = ?`,
-        [cashRev, cardRev, kSales, fPayments, todayExp, expCash, physCash, physCard, cashDiff, cardDiff, existing.id]
+        [cashRev, cardRev, kSales, fPayments, todayExp, expCash, physCash, physCard, physEft, cashDiff, cardDiff, eftDiff, eftRev, existing.id]
       );
       return { success: true, id: existing.id };
     }
@@ -805,17 +780,152 @@ export const dbService = {
     if (closing.id) {
       await db.run(
         `UPDATE daily_closings 
-         SET date = ?, cash_revenue = ?, card_revenue = ?, kontor_sales = ?, fatura_payments = ?, today_expenses = ?, expected_cash = ?, physical_cash = ?, physical_card = ?, cash_diff = ?, card_diff = ? 
+         SET date = ?, cash_revenue = ?, card_revenue = ?, kontor_sales = ?, fatura_payments = ?, today_expenses = ?, expected_cash = ?, physical_cash = ?, physical_card = ?, physical_eft = ?, cash_diff = ?, card_diff = ?, eft_diff = ?, eft_revenue = ? 
          WHERE id = ?`,
-        [dateVal, cashRev, cardRev, kSales, fPayments, todayExp, expCash, physCash, physCard, cashDiff, cardDiff, id]
+        [dateVal, cashRev, cardRev, kSales, fPayments, todayExp, expCash, physCash, physCard, physEft, cashDiff, cardDiff, eftDiff, eftRev, id]
       );
     } else {
       await db.run(
-        `INSERT INTO daily_closings (id, date, cash_revenue, card_revenue, kontor_sales, fatura_payments, today_expenses, expected_cash, physical_cash, physical_card, cash_diff, card_diff) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, dateVal, cashRev, cardRev, kSales, fPayments, todayExp, expCash, physCash, physCard, cashDiff, cardDiff]
+        `INSERT INTO daily_closings (id, date, cash_revenue, card_revenue, kontor_sales, fatura_payments, today_expenses, expected_cash, physical_cash, physical_card, physical_eft, cash_diff, card_diff, eft_diff, eft_revenue) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, dateVal, cashRev, cardRev, kSales, fPayments, todayExp, expCash, physCash, physCard, physEft, cashDiff, cardDiff, eftDiff, eftRev]
       );
     }
     return { success: true, id };
+  },
+
+  async getInitialData(): Promise<any> {
+    const todayStr = new Date().toLocaleDateString('sv-SE');
+    const tempDate = new Date();
+    tempDate.setDate(tempDate.getDate() - 7);
+    const sevenDaysAgoStr = tempDate.toLocaleDateString('sv-SE');
+    const tempMonth = new Date();
+    tempMonth.setDate(tempMonth.getDate() - 30);
+    const thirtyDaysAgoStr = tempMonth.toLocaleDateString('sv-SE');
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('sv-SE');
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('sv-SE');
+
+    const sql = `
+      SELECT json_build_object(
+        'cariler', COALESCE((SELECT json_agg(c) FROM (SELECT * FROM cariler ORDER BY id DESC) c), '[]'::json),
+        'products', COALESCE((SELECT json_agg(p) FROM (SELECT * FROM products ORDER BY id DESC, name ASC) p), '[]'::json),
+        'sales', COALESCE((SELECT json_agg(s) FROM (SELECT * FROM sales ORDER BY id DESC) s), '[]'::json),
+        'sale_items', COALESCE((SELECT json_agg(si) FROM (SELECT id, sale_id, product_id, quantity, price, name FROM sale_items) si), '[]'::json),
+        'turkcell_premiums', COALESCE((SELECT json_agg(tp) FROM (SELECT * FROM turkcell_premiums ORDER BY date DESC, id DESC) tp), '[]'::json),
+        'expenses', COALESCE((SELECT json_agg(e) FROM (SELECT * FROM expenses ORDER BY date DESC, id DESC) e), '[]'::json),
+        'turkcell_devices', COALESCE((SELECT json_agg(td) FROM (SELECT * FROM turkcell_devices ORDER BY date_added DESC, id DESC) td), '[]'::json),
+        'daily_closings', COALESCE((SELECT json_agg(dc) FROM (SELECT * FROM daily_closings ORDER BY date DESC) dc), '[]'::json),
+        'dashboard', json_build_object(
+          'todaySales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date = $1), 0),
+          'weekSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= $2), 0),
+          'monthSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= $3), 0),
+          'totalCariReceivables', COALESCE((SELECT SUM(balance) FROM cariler WHERE balance > 0), 0),
+          'criticalStockCount', (SELECT COUNT(*) FROM products WHERE category != 'Hizmet' AND stock < 5),
+          'totalSalesCount', (SELECT COUNT(*) FROM sales),
+          'totalTurkcellProfit', COALESCE((SELECT SUM(amount) FROM turkcell_premiums), 0),
+          'totalExpenses', COALESCE((SELECT SUM(amount) FROM expenses), 0),
+          'totalCihazProfit', COALESCE((
+            SELECT SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity) 
+            FROM sale_items s_item 
+            JOIN products prod ON s_item.product_id = prod.id 
+            JOIN sales s ON s_item.sale_id = s.id 
+            WHERE prod.type = 'Cihaz'
+          ), 0),
+          'totalAksesuarProfit', COALESCE((
+            SELECT SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity) 
+            FROM sale_items s_item 
+            JOIN products prod ON s_item.product_id = prod.id 
+            JOIN sales s ON s_item.sale_id = s.id 
+            WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
+          ), 0)
+        ),
+        'weeklySalesRaw', COALESCE((
+          SELECT json_agg(t) FROM (
+            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= $2 GROUP BY date
+          ) t
+        ), '[]'::json),
+        'monthlySalesRaw', COALESCE((
+          SELECT json_agg(t) FROM (
+            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= $4 AND date <= $5 GROUP BY date
+          ) t
+        ), '[]'::json)
+      ) as payload
+    `;
+
+    const res = await db.get<{ payload: any }>(sql, [todayStr, sevenDaysAgoStr, thirtyDaysAgoStr, startOfMonth, endOfMonth]);
+    
+    const payload = res?.payload || {
+      cariler: [],
+      products: [],
+      sales: [],
+      sale_items: [],
+      turkcell_premiums: [],
+      expenses: [],
+      turkcell_devices: [],
+      daily_closings: [],
+      dashboard: {
+        todaySales: 0,
+        weekSales: 0,
+        monthSales: 0,
+        totalCariReceivables: 0,
+        criticalStockCount: 0,
+        totalSalesCount: 0,
+        totalTurkcellProfit: 0,
+        totalExpenses: 0,
+        totalCihazProfit: 0,
+        totalAksesuarProfit: 0
+      },
+      weeklySalesRaw: [],
+      monthlySalesRaw: []
+    };
+
+    const weeklyChartMap: Record<string, number> = {};
+    (payload.weeklySalesRaw || []).forEach((r: any) => {
+      weeklyChartMap[r.date] = r.total;
+    });
+
+    const weeklyChart: ChartPoint[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = d.toLocaleDateString('sv-SE');
+      weeklyChart.push({
+        date: d.toLocaleDateString('tr-TR', { weekday: 'short' }),
+        amount: weeklyChartMap[dStr] || 0
+      });
+    }
+
+    const monthMap: Record<string, number> = {};
+    (payload.monthlySalesRaw || []).forEach((r: any) => {
+      monthMap[r.date] = r.total;
+    });
+
+    const monthlyChart: ChartPoint[] = [];
+    for (let d = 1; d <= now.getDate(); d++) {
+      const dObj = new Date(now.getFullYear(), now.getMonth(), d);
+      const dStr = dObj.toLocaleDateString('sv-SE');
+      monthlyChart.push({
+        day: d,
+        amount: monthMap[dStr] || 0
+      });
+    }
+
+    return {
+      cariler: payload.cariler || [],
+      products: payload.products || [],
+      sales: payload.sales || [],
+      sale_items: payload.sale_items || [],
+      turkcell_premiums: payload.turkcell_premiums || [],
+      expenses: payload.expenses || [],
+      turkcell_devices: payload.turkcell_devices || [],
+      daily_closings: payload.daily_closings || [],
+      dashboard: {
+        metrics: payload.dashboard,
+        weeklyChart,
+        monthlyChart,
+        serverIp: 'localhost'
+      }
+    };
   }
 };
