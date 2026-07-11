@@ -366,7 +366,7 @@ export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
 
   // KASA / SATIŞ STATE
-  const [saleType, setSaleType] = useState('perakende'); // "perakende" veya "cari"
+  const [saleType, setSaleType] = useState('perakende'); // "perakende", "cari" veya "gider"
   const [saleItems, setSaleItems] = useState<SaleCartItem[]>([]);
   const [manualItem, setManualItem] = useState<ManualItemForm>({ name: '', price: '', quantity: '1' });
   const [selectedProductIdForManual, setSelectedProductIdForManual] = useState('manual');
@@ -1994,18 +1994,28 @@ export default function DashboardHome() {
                     {/* Checkout Card */}
                     <div className="glass-panel p-5 bg-gradient-to-b from-slate-900 to-indigo-950/20">
                       <div className="flex justify-between items-center mb-4">
-                        <h4 className="font-bold text-white text-sm">Satış İşlemini Tamamla</h4>
+                        <div className="flex items-center gap-2">
+                          {saleType === 'gider' && <Coins size={14} className="text-indigo-400" />}
+                          <h4 className="font-bold text-white text-sm">
+                            {saleType === 'gider' ? 'Gider Kayıt' : 'Satış İşlemini Tamamla'}
+                          </h4>
+                        </div>
+                        {saleType === 'gider' && (
+                          <span className="text-[10px] text-red-400 font-mono font-bold">
+                            -{expensesList.reduce((sum, e) => sum + e.amount, 0).toLocaleString('tr-TR')} TL
+                          </span>
+                        )}
                       </div>
 
                       {/* Sale Type Tabs */}
-                      <div className="grid grid-cols-2 gap-1.5 mb-4 bg-white/2 p-1 rounded-lg border border-white/5 text-xs">
+                      <div className="grid grid-cols-3 gap-1 mb-4 bg-white/2 p-1 rounded-lg border border-white/5 text-[10px]">
                         <button 
                           onClick={() => {
                             setSaleType('perakende');
                             setSelectedCariId('pesin');
                             setPaymentMethod('Nakit');
                           }}
-                          className={`py-2 px-3 rounded-md font-semibold text-center transition-colors ${saleType === 'perakende' ? 'bg-indigo-600 text-white' : 'text-secondary hover:bg-white/5'}`}
+                          className={`py-2 px-1.5 rounded-md font-semibold text-center transition-colors ${saleType === 'perakende' ? 'bg-indigo-600 text-white' : 'text-secondary hover:bg-white/5'}`}
                         >
                           Perakende Satış
                         </button>
@@ -2017,12 +2027,113 @@ export default function DashboardHome() {
                               setPaymentMethod('Cari (Borç)');
                             }
                           }}
-                          className={`py-2 px-3 rounded-md font-semibold text-center transition-colors ${saleType === 'cari' ? 'bg-indigo-600 text-white' : 'text-secondary hover:bg-white/5'}`}
+                          className={`py-2 px-1.5 rounded-md font-semibold text-center transition-colors ${saleType === 'cari' ? 'bg-indigo-600 text-white' : 'text-secondary hover:bg-white/5'}`}
                         >
                           Cari / Kurumsal
                         </button>
+                        <button 
+                          onClick={() => setSaleType('gider')}
+                          className={`py-2 px-1.5 rounded-md font-semibold text-center transition-colors ${saleType === 'gider' ? 'bg-indigo-600 text-white' : 'text-secondary hover:bg-white/5'}`}
+                        >
+                          Gider
+                        </button>
                       </div>
-                      
+
+                      {saleType === 'gider' ? (
+                        <>
+                          <form onSubmit={handleCreateExpense} className="flex flex-col gap-3 text-xs mb-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-secondary block mb-1 font-sans">Tarih</label>
+                                <input 
+                                  type="date" 
+                                  required 
+                                  className="custom-input text-xs py-1.5 h-9" 
+                                  value={newExpense.date}
+                                  onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-secondary block mb-1 font-sans">Tutar (TL)*</label>
+                                <input 
+                                  type="number" 
+                                  required 
+                                  placeholder="0.00" 
+                                  className="custom-input text-xs py-1.5 h-9" 
+                                  value={newExpense.amount}
+                                  onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-secondary block mb-1 font-sans">Kategori*</label>
+                              <select 
+                                required
+                                className="custom-input text-xs h-9 w-full text-white bg-neutral-900 border-white/10"
+                                value={newExpense.category}
+                                onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
+                              >
+                                <option value="Genel Gider">Genel Gider</option>
+                                <option value="Kargo">Kargo</option>
+                                <option value="Emanet">Emanet</option>
+                                <option value="Teknik Servis">Teknik Servis</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-secondary block mb-1 font-sans">Gider Açıklaması*</label>
+                              <div className="flex gap-2">
+                                <input 
+                                  type="text" 
+                                  required 
+                                  placeholder="Yemek, Yol, Kargo vb." 
+                                  className="custom-input text-xs py-1.5 h-9 min-w-0 flex-1" 
+                                  value={newExpense.description}
+                                  onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
+                                />
+                                <button type="submit" className="btn-primary shrink-0 py-1.5 px-4 text-xs cursor-pointer h-9">
+                                  Kaydet
+                                </button>
+                              </div>
+                            </div>
+                          </form>
+
+                          <div className="overflow-y-auto max-h-[180px] border border-white/5 rounded-lg p-1 bg-black/10">
+                            {expensesList.length === 0 ? (
+                              <div className="text-center py-4 text-muted text-[10px] font-sans">Gider kaydı yok.</div>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                {expensesList.map((expense) => (
+                                  <div key={expense.id} className="p-2 rounded bg-white/2 border border-white/5 flex items-center justify-between text-[10px] hover:bg-white/5 transition-colors">
+                                    <div className="min-w-0 pr-2 flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-semibold text-white truncate block max-w-[140px] font-sans">{expense.description}</span>
+                                        <span className={`text-[7px] px-1 py-0.2 rounded font-bold font-mono ${
+                                          expense.category === 'Kargo' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/10' :
+                                          expense.category === 'Emanet' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/10' :
+                                          expense.category === 'Teknik Servis' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/10' :
+                                          'bg-emerald-500/20 text-emerald-400 border border-emerald-500/10'
+                                        }`}>
+                                          {expense.category || 'Genel Gider'}
+                                        </span>
+                                      </div>
+                                      <span className="text-[8px] text-secondary font-mono">{expense.date}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <span className="font-bold text-red-400 font-mono">-{expense.amount.toLocaleString('tr-TR')} TL</span>
+                                      <button 
+                                        onClick={() => handleDeleteExpense(expense.id, expense.description)}
+                                        className="text-red-400 hover:text-red-300 p-0.5 cursor-pointer"
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
                       <div className="flex flex-col gap-4">
                         <div>
                           <label className="text-xs text-secondary block mb-1">Satış Tarihi</label>
@@ -2122,111 +2233,7 @@ export default function DashboardHome() {
                           Satışı Kaydet ve Bitir
                         </button>
                       </div>
-                    </div>
-
-                    {/* Gider Kayıt ve Takip Sistemi (COMPACT) */}
-                    <div className="glass-panel p-4 border border-indigo-500/10 shadow-lg">
-                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
-                        <div className="flex items-center gap-2 text-indigo-400">
-                          <Coins size={14} />
-                          <h4 className="font-bold text-xs text-white">Gider Kayıt</h4>
-                        </div>
-                        <span className="text-[10px] text-red-400 font-mono font-bold">-{expensesList.reduce((sum, e) => sum + e.amount, 0).toLocaleString('tr-TR')} TL</span>
-                      </div>
-
-                      <form onSubmit={handleCreateExpense} className="flex flex-col gap-2.5 text-[11px] mb-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="text-[9px] text-secondary block mb-0.5 font-sans">Tarih</label>
-                            <input 
-                              type="date" 
-                              required 
-                              className="custom-input py-1 text-[11px] h-8" 
-                              value={newExpense.date}
-                              onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[9px] text-secondary block mb-0.5 font-bold font-sans">Kategori*</label>
-                            <select 
-                              required
-                              className="custom-input py-1 text-[11px] h-8 bg-neutral-900 border-white/10"
-                              value={newExpense.category}
-                              onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
-                              style={{ colorScheme: 'dark' }}
-                            >
-                              <option value="Genel Gider">Genel Gider</option>
-                              <option value="Kargo">Kargo</option>
-                              <option value="Emanet">Emanet</option>
-                              <option value="Teknik Servis">Teknik Servis</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-[9px] text-secondary block mb-0.5 font-bold font-sans">Tutar (TL)*</label>
-                            <input 
-                              type="number" 
-                              required 
-                              placeholder="0.00" 
-                              className="custom-input py-1 text-[11px] h-8" 
-                              value={newExpense.amount}
-                              onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-[9px] text-secondary block mb-0.5 font-bold font-sans">Gider Açıklaması*</label>
-                          <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              required 
-                              placeholder="Yemek, Yol, Kargo vb." 
-                              className="custom-input py-1 text-[11px] h-8" 
-                              value={newExpense.description}
-                              onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
-                            />
-                            <button type="submit" className="btn-primary shrink-0 py-1 px-3 text-[10px] cursor-pointer h-8">
-                              Kaydet
-                            </button>
-                          </div>
-                        </div>
-                      </form>
-
-                      {/* Small Expenses List */}
-                      <div className="overflow-y-auto max-h-[140px] border border-white/5 rounded-lg p-1 bg-black/10">
-                        {expensesList.length === 0 ? (
-                          <div className="text-center py-4 text-muted text-[10px] font-sans">Gider kaydı yok.</div>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            {expensesList.map((expense) => (
-                              <div key={expense.id} className="p-2 rounded bg-white/2 border border-white/5 flex items-center justify-between text-[10px] hover:bg-white/5 transition-colors">
-                                <div className="min-w-0 pr-2 flex flex-col gap-0.5">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-semibold text-white truncate block max-w-[110px] font-sans">{expense.description}</span>
-                                    <span className={`text-[7px] px-1 py-0.2 rounded font-bold font-mono ${
-                                      expense.category === 'Kargo' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/10' :
-                                      expense.category === 'Emanet' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/10' :
-                                      expense.category === 'Teknik Servis' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/10' :
-                                      'bg-emerald-500/20 text-emerald-400 border border-emerald-500/10'
-                                    }`}>
-                                      {expense.category || 'Genel Gider'}
-                                    </span>
-                                  </div>
-                                  <span className="text-[8px] text-secondary font-mono">{expense.date}</span>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="font-bold text-red-400 font-mono">-{expense.amount.toLocaleString('tr-TR')} TL</span>
-                                  <button 
-                                    onClick={() => handleDeleteExpense(expense.id, expense.description)}
-                                    className="text-red-400 hover:text-red-300 p-0.5 cursor-pointer"
-                                  >
-                                    <Trash2 size={11} />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
 
                   </div>
@@ -2570,12 +2577,9 @@ export default function DashboardHome() {
                               <thead>
                                 <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
                                   <th className="p-3 pl-4">Tarih</th>
-                                  <th className="p-3 text-right">Beklenen Nakit</th>
-                                  <th className="p-3 text-right">Eldeki Nakit</th>
-                                  <th className="p-3 text-right">Nakit Farkı</th>
-                                  <th className="p-3 text-right">Beklenen POS</th>
-                                  <th className="p-3 text-right">Eldeki POS</th>
-                                  <th className="p-3 text-right">POS Farkı</th>
+                                  <th className="p-3 text-right">Nakit</th>
+                                  <th className="p-3 text-right">POS</th>
+                                  <th className="p-3 text-right">Kasa Farkı</th>
                                   <th className="p-3 text-center pr-4">İşlemler</th>
                                 </tr>
                               </thead>
@@ -2583,21 +2587,48 @@ export default function DashboardHome() {
                                 {dailyClosingsList.slice((pageDailyClosings - 1) * 10, pageDailyClosings * 10).map((closing) => {
                                   const cDiff = toNum(closing.cash_diff) || 0;
                                   const pDiff = toNum(closing.card_diff) || 0;
+                                  const expectedCash = toNum(closing.expected_cash) || 0;
+                                  const physicalCash = toNum(closing.physical_cash) || 0;
+                                  const expectedPos = toNum(closing.card_revenue) || 0;
+                                  const physicalPos = toNum(closing.physical_card) || 0;
+                                  const totalExpected = expectedCash + expectedPos;
+                                  const totalPhysical = physicalCash + physicalPos;
+                                  const totalDiff = cDiff + pDiff;
+
+                                  const formatDiff = (diff: number) =>
+                                    diff > 0 ? `+${diff.toLocaleString('tr-TR')}` : diff.toLocaleString('tr-TR');
+
+                                  const diffClass = (diff: number) =>
+                                    diff === 0 ? 'text-emerald-400' : diff > 0 ? 'text-emerald-400' : 'text-red-400';
+
+                                  const stackedCell = (
+                                    expected: number,
+                                    physical: number,
+                                    diff: number,
+                                  ) => (
+                                    <div className="flex flex-col gap-1 font-mono text-[10px] leading-tight">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-secondary shrink-0">Beklenen</span>
+                                        <span className="text-secondary">{expected.toLocaleString('tr-TR')} TL</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-white/70 shrink-0">Eldeki</span>
+                                        <span className="text-white">{physical.toLocaleString('tr-TR')} TL</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-3 pt-0.5 border-t border-white/5">
+                                        <span className="text-secondary shrink-0">Fark</span>
+                                        <span className={`font-bold ${diffClass(diff)}`}>{formatDiff(diff)} TL</span>
+                                      </div>
+                                    </div>
+                                  );
                                   
                                   return (
                                     <tr key={closing.id} className="hover:bg-white/[0.01] transition-colors">
-                                      <td className="p-3 pl-4 font-mono font-bold text-white">{closing.date}</td>
-                                      <td className="p-3 text-right font-mono text-secondary">{(toNum(closing.expected_cash) || 0).toLocaleString('tr-TR')} TL</td>
-                                      <td className="p-3 text-right font-mono text-white">{(toNum(closing.physical_cash) || 0).toLocaleString('tr-TR')} TL</td>
-                                      <td className={`p-3 text-right font-mono font-bold ${cDiff === 0 ? 'text-emerald-400' : cDiff > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {cDiff > 0 ? `+${cDiff.toLocaleString('tr-TR')}` : cDiff.toLocaleString('tr-TR')} TL
-                                      </td>
-                                      <td className="p-3 text-right font-mono text-secondary">{(toNum(closing.card_revenue) || 0).toLocaleString('tr-TR')} TL</td>
-                                      <td className="p-3 text-right font-mono text-white">{(toNum(closing.physical_card) || 0).toLocaleString('tr-TR')} TL</td>
-                                      <td className={`p-3 text-right font-mono font-bold ${pDiff === 0 ? 'text-emerald-400' : pDiff > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {pDiff > 0 ? `+${pDiff.toLocaleString('tr-TR')}` : pDiff.toLocaleString('tr-TR')} TL
-                                      </td>
-                                      <td className="p-3 text-center pr-4">
+                                      <td className="p-3 pl-4 font-mono font-bold text-white align-top">{closing.date}</td>
+                                      <td className="p-3 text-right align-top">{stackedCell(expectedCash, physicalCash, cDiff)}</td>
+                                      <td className="p-3 text-right align-top">{stackedCell(expectedPos, physicalPos, pDiff)}</td>
+                                      <td className="p-3 text-right align-top">{stackedCell(totalExpected, totalPhysical, totalDiff)}</td>
+                                      <td className="p-3 text-center pr-4 align-top">
                                         <button
                                           onClick={() => handleOpenEditClosingModal(closing)}
                                           className="px-2.5 py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-[10px] text-indigo-400 border border-indigo-500/20 font-semibold cursor-pointer transition-all"
@@ -4557,28 +4588,6 @@ export default function DashboardHome() {
 
                       <div className="glass-panel metric-card">
                         <div>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Cari Alacaklar</span>
-                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.totalCariReceivables.toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[10px] text-amber-400">Borçlu müşteriler</span>
-                        </div>
-                        <div className="metric-icon bg-warning-glow text-warning">
-                          <Users size={20} />
-                        </div>
-                      </div>
-
-                      <div className="glass-panel metric-card cursor-pointer hover:border-amber-500/20 transition-colors" onClick={() => setActiveTab('turkcell')}>
-                        <div>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Turkcell Prim Karı</span>
-                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.totalTurkcellProfit.toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[10px] text-amber-400">Toplam net prim geliri</span>
-                        </div>
-                        <div className="metric-icon bg-amber-500/10 text-amber-400">
-                          <Smartphone size={20} />
-                        </div>
-                      </div>
-
-                      <div className="glass-panel metric-card">
-                        <div>
                           <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Toplam Gider</span>
                           <h3 className="text-xl font-extrabold text-red-400 mt-1 font-mono">{metrics.totalExpenses ? metrics.totalExpenses.toLocaleString('tr-TR') : 0} TL</h3>
                           <span className="text-[10px] text-red-400/80">Kayıtlı tüm gider kalemleri</span>
@@ -4591,8 +4600,11 @@ export default function DashboardHome() {
                       <div className="glass-panel metric-card bg-gradient-to-br from-emerald-950/20 to-emerald-900/10 border border-emerald-500/15">
                         <div>
                           <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block text-emerald-400 font-bold">Net İşletme Kârı</span>
-                          <h3 className="text-xl font-extrabold text-emerald-400 mt-1 font-mono">{(metrics.totalCihazProfit + metrics.totalTurkcellProfit - metrics.totalExpenses).toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[10px] text-emerald-500/80">Cihaz+Prim Kârı - Giderler</span>
+                          <h3 className="text-xl font-extrabold text-emerald-400 mt-1 font-mono">{(metrics.totalCihazProfit + metrics.totalAksesuarProfit - metrics.totalExpenses).toLocaleString('tr-TR')} TL</h3>
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            <span className="text-[10px] text-emerald-500/80">Cihaz: {metrics.totalCihazProfit.toLocaleString('tr-TR')} TL</span>
+                            <span className="text-[10px] text-emerald-500/80">Aksesuar: {metrics.totalAksesuarProfit.toLocaleString('tr-TR')} TL − Giderler</span>
+                          </div>
                         </div>
                         <div className="metric-icon bg-emerald-500/15 text-emerald-400 border border-emerald-500/10">
                           <ArrowUpRight size={20} />
