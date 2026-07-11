@@ -1,0 +1,584 @@
+const fs = require('fs');
+const path = require('path');
+
+const filepath = path.join(__dirname, '..', '..', '..', '..', '..', '..', 'OneDrive', 'Desktop', 'GNC-ERP', 'src', 'app', 'dashboard', 'DashboardHome.tsx');
+// Make sure path resolve is correct:
+const resolvedPath = path.resolve("c:/Users/PC/OneDrive/Desktop/GNC-ERP/src/app/dashboard/DashboardHome.tsx");
+
+const replacement_content = `            {activeTab === 'reports' && (
+              <div className="animate-fade-in flex flex-col gap-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-3">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-white mb-0.5 font-sans">Satış Raporu ve Analiz Paneli</h2>
+                    <p className="text-secondary text-xs">Ciro, kârlılık oranları, haftalık/aylık grafik analizleri ve detaylı ürün raporları.</p>
+                  </div>
+                  
+                  {/* Sub-tab selection */}
+                  <div className="flex bg-white/5 border border-white/10 p-0.5 rounded-lg text-xs self-start sm:self-center">
+                    <button 
+                      onClick={() => setReportSubTab('analiz')}
+                      className={\`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer \${reportSubTab === 'analiz' ? 'bg-indigo-600 text-white' : 'text-secondary hover:text-white'}\`}
+                    >
+                      Analiz & Grafikler
+                    </button>
+                    <button 
+                      onClick={() => setReportSubTab('detay')}
+                      className={\`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer \${reportSubTab === 'detay' ? 'bg-indigo-600 text-white' : 'text-secondary hover:text-white'}\`}
+                    >
+                      Detaylı Ürün Raporları
+                    </button>
+                  </div>
+                </div>
+
+                {reportSubTab === 'analiz' ? (
+                  <div className="animate-fade-in flex flex-col gap-5">
+                    {/* Metrics Cards */}
+                    <section className="metrics-grid">
+                      <div className="glass-panel metric-card">
+                        <div>
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Bugünkü Satış</span>
+                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.todaySales.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[10px] text-indigo-400">Aktif ciro</span>
+                        </div>
+                        <div className="metric-icon bg-indigo-500/10 text-indigo-400">
+                          <Coins size={20} />
+                        </div>
+                      </div>
+
+                      <div className="glass-panel metric-card">
+                        <div>
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Bu Haftaki Satış</span>
+                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.weekSales.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[10px] text-success">Son 7 gün</span>
+                        </div>
+                        <div className="metric-icon bg-success-glow text-success">
+                          <TrendingUp size={20} />
+                        </div>
+                      </div>
+
+                      <div className="glass-panel metric-card">
+                        <div>
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider font-bold">Bu Ayki Toplam</span>
+                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.monthSales.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[10px] text-sky-400">Son 30 gün</span>
+                        </div>
+                        <div className="metric-icon bg-sky-500/10 text-sky-400">
+                          <Coins size={20} />
+                        </div>
+                      </div>
+
+                      <div className="glass-panel metric-card">
+                        <div>
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Cari Alacaklar</span>
+                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.totalCariReceivables.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[10px] text-amber-400">Borçlu müşteriler</span>
+                        </div>
+                        <div className="metric-icon bg-warning-glow text-warning">
+                          <Users size={20} />
+                        </div>
+                      </div>
+
+                      <div className="glass-panel metric-card cursor-pointer hover:border-amber-500/20 transition-colors" onClick={() => setActiveTab('turkcell')}>
+                        <div>
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Turkcell Prim Karı</span>
+                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.totalTurkcellProfit.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[10px] text-amber-400">Toplam net prim geliri</span>
+                        </div>
+                        <div className="metric-icon bg-amber-500/10 text-amber-400">
+                          <Smartphone size={20} />
+                        </div>
+                      </div>
+
+                      <div className="glass-panel metric-card">
+                        <div>
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Toplam Gider</span>
+                          <h3 className="text-xl font-extrabold text-red-400 mt-1 font-mono">{metrics.totalExpenses ? metrics.totalExpenses.toLocaleString('tr-TR') : 0} TL</h3>
+                          <span className="text-[10px] text-red-400/80">Kayıtlı tüm gider kalemleri</span>
+                        </div>
+                        <div className="metric-icon bg-red-500/10 text-red-400">
+                          <ArrowDownLeft size={20} />
+                        </div>
+                      </div>
+
+                      <div className="glass-panel metric-card bg-gradient-to-br from-emerald-950/20 to-emerald-900/10 border border-emerald-500/15">
+                        <div>
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block text-emerald-400 font-bold">Net İşletme Kârı</span>
+                          <h3 className="text-xl font-extrabold text-emerald-400 mt-1 font-mono">{(metrics.totalCihazProfit + metrics.totalTurkcellProfit - metrics.totalExpenses).toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[10px] text-emerald-500/80">Cihaz+Prim Kârı - Giderler</span>
+                        </div>
+                        <div className="metric-icon bg-emerald-500/15 text-emerald-400 border border-emerald-500/10">
+                          <ArrowUpRight size={20} />
+                        </div>
+                      </div>
+                    </section>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Weekly & Monthly Charts */}
+                      <div className="lg:col-span-2 flex flex-col gap-6">
+                        {/* Weekly sales chart */}
+                        <div className="glass-panel p-5">
+                          <h4 className="font-bold text-white text-sm mb-4">Haftalık Satış Analizi (Son 7 Gün)</h4>
+                          
+                          <div className="h-44 w-full flex items-end justify-between gap-2 px-2 pb-4 pt-2 border-b border-white/5 relative">
+                            {weeklyChart.map((item, idx) => {
+                              const maxVal = Math.max(...weeklyChart.map(x => x.amount)) || 1;
+                              const heightPct = (item.amount / maxVal) * 85;
+                              return (
+                                <div key={idx} className="flex flex-col items-center flex-1 group">
+                                  <span className="text-[9px] text-indigo-400 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
+                                    {item.amount.toLocaleString('tr-TR')} TL
+                                  </span>
+                                  <div 
+                                    style={{ height: \`\${Math.max(5, heightPct)}%\` }} 
+                                    className="w-full bg-gradient-to-t from-indigo-600/70 to-indigo-400 rounded-t transition-all duration-300 hover:brightness-110"
+                                  ></div>
+                                  <span className="text-[10px] text-secondary mt-2">{item.date}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Monthly chart */}
+                        <div className="glass-panel p-5">
+                          <h4 className="font-bold text-white text-sm mb-4">Aylık Satış Analizi (Son Ay)</h4>
+                          
+                          <div className="h-44 w-full flex items-end justify-between gap-2 px-2 pb-4 pt-2 border-b border-white/5 relative">
+                            {monthlyChart.map((item, idx) => {
+                              const maxVal = Math.max(...monthlyChart.map(x => x.amount)) || 1;
+                              const heightPct = (item.amount / maxVal) * 85;
+                              return (
+                                <div key={idx} className="flex flex-col items-center flex-1 group">
+                                  <span className="text-[9px] text-indigo-400 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
+                                    {item.amount.toLocaleString('tr-TR')} TL
+                                  </span>
+                                  <div 
+                                    style={{ height: \`\${Math.max(5, heightPct)}%\` }} 
+                                    className="w-full bg-gradient-to-t from-violet-600/70 to-violet-400 rounded-t transition-all duration-300 hover:brightness-110"
+                                  ></div>
+                                  <span className="text-[10px] text-secondary mt-2">{item.day}. Gün</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sidebar stats & Critical Stock */}
+                      <div className="flex flex-col gap-6">
+                        {/* Son Gider Kayıtları */}
+                        <div className="glass-panel p-5">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-bold text-white text-sm">Son Gider Kayıtları</h4>
+                            <span className="badge badge-danger">Giderler</span>
+                          </div>
+
+                          <div className="flex flex-col gap-3">
+                            {expensesList.length === 0 ? (
+                              <div className="text-center py-4 text-secondary text-xs">Kayıtlı gider bulunmamaktadır.</div>
+                            ) : (
+                              expensesList.slice(0, 5).map(exp => (
+                                <div key={exp.id} className="p-3 rounded-lg bg-red-500/5 border border-red-500/10 flex justify-between items-center text-xs">
+                                  <div>
+                                    <h5 className="font-semibold text-white truncate max-w-[150px]">{exp.description}</h5>
+                                    <span className="text-[10px] text-muted block mt-0.5">{exp.date}</span>
+                                  </div>
+                                  <span className="text-red-400 font-bold bg-red-500/15 px-2 py-0.5 rounded font-mono shrink-0">
+                                    -\${exp.amount.toLocaleString('tr-TR')} TL
+                                  </span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Recent Transactions list */}
+                        <div className="glass-panel p-5">
+                          <h4 className="font-bold text-white text-sm mb-4">Son Satış İşlemleri</h4>
+                          <div className="flex flex-col gap-3">
+                            {sales.slice(0, 5).map((sale) => (
+                              <div key={sale.id} className="p-3 rounded-lg border border-white/5 bg-white/2 flex justify-between items-center text-xs">
+                                <div className="min-w-0 pr-2">
+                                  <h5 className="font-semibold text-white truncate">
+                                    {sale.items.map(item => item.name).join(', ')}
+                                  </h5>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-secondary mt-0.5">
+                                    <span>{sale.date}</span>
+                                    <span>•</span>
+                                    <span>{customers.find(c => c.id === sale.cari_id)?.name || 'Peşin Satış'}</span>
+                                  </div>
+                                </div>
+                                <span className="font-bold text-white shrink-0 font-mono">
+                                  {sale.total_amount.toLocaleString('tr-TR')} TL
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="animate-fade-in flex flex-col gap-5">
+                    {/* Report Filters */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2 glass-panel px-3 py-1.5 border border-white/5">
+                        <span className="text-xs text-secondary font-medium">Dönem:</span>
+                        <select 
+                          value={reportRangeFilter}
+                          onChange={(e) => setReportRangeFilter(e.target.value)}
+                          className="bg-transparent border-0 text-white font-semibold text-xs focus:ring-0 cursor-pointer outline-none font-sans mr-2"
+                          style={{ colorScheme: 'dark' }}
+                        >
+                          <option value="today" className="bg-neutral-900 text-white">Bugün</option>
+                          <option value="7days" className="bg-neutral-900 text-white">Son 7 Gün</option>
+                          <option value="month" className="bg-neutral-900 text-white">Son Ay</option>
+                          <option value="3months" className="bg-neutral-900 text-white">Son 3 Ay</option>
+                          <option value="all" className="bg-neutral-900 text-white">Tüm Zamanlar</option>
+                          <option value="custom" className="bg-neutral-900 text-white">Özel Tarih</option>
+                        </select>
+                      </div>
+
+                      {reportRangeFilter === 'custom' && (
+                        <div className="flex items-center gap-2 glass-panel px-3.5 py-1.5 border border-white/5 animate-fade-in">
+                          <span className="text-xs text-secondary font-medium">Tarih:</span>
+                          <input 
+                            type="date" 
+                            className="bg-transparent border-0 text-white font-semibold text-xs focus:ring-0 cursor-pointer outline-none font-mono"
+                            value={reportDateFilter}
+                            onChange={(e) => setReportDateFilter(e.target.value)}
+                          />
+                        </div>
+                      )}
+
+                      <div className="relative w-full sm:max-w-md">
+                        <span className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-[var(--text-muted)]">
+                          <Search size={16} />
+                        </span>
+                        <input 
+                          type="text" 
+                          placeholder="Raporda ürün adı veya barkod ara..." 
+                          className="custom-input !pl-10 text-xs w-full font-sans"
+                          value={reportSearch}
+                          onChange={(e) => setReportSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Compile data */}
+                    {(() => {
+                      const today = new Date();
+                      const todayStr = today.toLocaleDateString('sv-SE');
+                      
+                      let salesForReport = [];
+                      let expensesForReport = [];
+                      if (reportRangeFilter === 'today') {
+                        salesForReport = sales.filter(s => s.date === todayStr);
+                        expensesForReport = expensesList.filter(e => e.date === todayStr);
+                      } else if (reportRangeFilter === '7days') {
+                        const limitDate = new Date();
+                        limitDate.setDate(today.getDate() - 7);
+                        const limitStr = limitDate.toLocaleDateString('sv-SE');
+                        salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
+                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr);
+                      } else if (reportRangeFilter === 'month') {
+                        const limitDate = new Date();
+                        limitDate.setMonth(today.getMonth() - 1);
+                        const limitStr = limitDate.toLocaleDateString('sv-SE');
+                        salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
+                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr);
+                      } else if (reportRangeFilter === '3months') {
+                        const limitDate = new Date();
+                        limitDate.setMonth(today.getMonth() - 3);
+                        const limitStr = limitDate.toLocaleDateString('sv-SE');
+                        salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
+                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr);
+                      } else if (reportRangeFilter === 'all') {
+                        salesForReport = sales;
+                        expensesForReport = expensesList;
+                      } else {
+                        salesForReport = sales.filter(s => s.date === reportDateFilter);
+                        expensesForReport = expensesList.filter(e => e.date === reportDateFilter);
+                      }
+
+                      const totalExpensesForReport = expensesForReport.reduce((sum, e) => sum + e.amount, 0);
+
+                      // Aggregate product sales
+                      const productAgg = {};
+                      
+                      salesForReport.forEach(sale => {
+                        sale.items.forEach(item => {
+                          const prodInfo = products.find(p => p.id === item.product_id);
+                          
+                          const productId = item.product_id;
+                          const type = prodInfo ? prodInfo.type : 'Diğer';
+                          const category = prodInfo ? prodInfo.category : 'Diğer';
+                          const purchasePrice = prodInfo ? (prodInfo.purchase_price || 0) : 0;
+                          
+                          if (!productAgg[productId]) {
+                            productAgg[productId] = {
+                              id: productId,
+                              name: item.name,
+                              barcode: prodInfo ? prodInfo.barcode : '-',
+                              imei: prodInfo ? prodInfo.imei : '-',
+                              category: category,
+                              type: type,
+                              quantity: 0,
+                              totalRevenue: 0,
+                              purchasePrice: purchasePrice
+                            };
+                          }
+                          
+                          productAgg[productId].quantity += item.quantity;
+                          productAgg[productId].totalRevenue += item.quantity * item.price;
+                        });
+                      });
+
+                      // Convert to array and filter by search query
+                      const allAggregatedItems = Object.values(productAgg).filter(item => 
+                        !reportSearch || 
+                        normalizeString(item.name).includes(normalizeString(reportSearch)) || 
+                        (item.barcode && normalizeString(item.barcode).includes(normalizeString(reportSearch))) || 
+                        (item.imei && normalizeString(item.imei).includes(normalizeString(reportSearch)))
+                      );
+
+                      // Separate into Devices and Accessories/Others
+                      const deviceReportItems = allAggregatedItems.filter(item => item.type === 'Cihaz');
+                      const otherReportItems = allAggregatedItems.filter(item => item.type !== 'Cihaz');
+
+                      // Calculations
+                      const totalRevenue = allAggregatedItems.reduce((sum, item) => sum + item.totalRevenue, 0);
+                      const totalSoldQty = allAggregatedItems.reduce((sum, item) => sum + item.quantity, 0);
+                      
+                      // Device profitability calculations
+                      const totalDevicePurchaseCost = deviceReportItems.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
+                      const totalDeviceSalesRevenue = deviceReportItems.reduce((sum, item) => sum + item.totalRevenue, 0);
+                      const totalDeviceProfit = totalDeviceSalesRevenue - totalDevicePurchaseCost;
+
+                      // Accessory profitability calculations
+                      const totalOtherPurchaseCost = otherReportItems.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
+                      const totalOtherSalesRevenue = otherReportItems.reduce((sum, item) => sum + item.totalRevenue, 0);
+                      const totalOtherProfit = totalOtherSalesRevenue - totalOtherPurchaseCost;
+
+                      return (
+                        <>
+                          {/* Summary Metrics (4 Cards) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans mb-2">
+                            <div className="glass-panel p-4 bg-gradient-to-r from-emerald-950/10 to-emerald-900/5 border border-white/5">
+                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Cihaz Satış Kârı</span>
+                              <h3 className="text-lg font-extrabold text-emerald-400 mt-1 font-mono">{totalDeviceProfit.toLocaleString('tr-TR')} TL</h3>
+                              <span className="text-[9px] text-secondary">Satılan cihaz net karı</span>
+                            </div>
+                            <div className="glass-panel p-4 bg-gradient-to-r from-emerald-950/10 to-emerald-900/5 border border-white/5">
+                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Aksesuar Satış Kârı</span>
+                              <h3 className="text-lg font-extrabold text-emerald-400 mt-1 font-mono">{totalOtherProfit.toLocaleString('tr-TR')} TL</h3>
+                              <span className="text-[9px] text-secondary">Aksesuar & diğer net karı</span>
+                            </div>
+                            <div className="glass-panel p-4 bg-gradient-to-r from-red-950/20 to-red-900/10 border border-red-500/10">
+                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block text-red-400">Dönem Giderleri</span>
+                              <h3 className="text-lg font-extrabold text-red-400 mt-1 font-mono">-{totalExpensesForReport.toLocaleString('tr-TR')} TL</h3>
+                              <span className="text-[9px] text-red-400/80">Dönem içi gider toplamı</span>
+                            </div>
+                            <div className="glass-panel p-4">
+                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Rapor Hasılatı</span>
+                              <h3 className="text-lg font-extrabold text-white mt-1 font-mono">{totalRevenue.toLocaleString('tr-TR')} TL</h3>
+                              <span className="text-[9px] text-secondary">Toplam satış cirosu ({totalSoldQty} adet ürün)</span>
+                            </div>
+                          </div>
+
+                          {/* SECTION 1: CİHAZ SATIŞ VE KÂRLILIK RAPORU */}
+                          <div className="glass-panel p-0 overflow-hidden border border-emerald-500/10 shadow-lg mt-4">
+                            <div className="p-4 border-b border-emerald-500/10 bg-emerald-950/5 flex justify-between items-center">
+                              <div className="flex items-center gap-2 text-emerald-400">
+                                <Tablet size={16} />
+                                <h4 className="font-bold text-sm">Cihaz Satış & Kârlılık Raporu</h4>
+                              </div>
+                              <span className="text-[10px] text-emerald-400 font-semibold font-mono">{deviceReportItems.length} cihaz listelendi</span>
+                            </div>
+
+                            {deviceReportItems.length === 0 ? (
+                              <div className="p-8 text-center text-secondary text-xs">
+                                Seçilen dönemde satış yapılmış cihaz kaydı bulunmamaktadır.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
+                                        <th className="p-3 pl-4">Ürün Adı</th>
+                                        <th className="p-3">IMEI</th>
+                                        <th className="p-3 text-right">Adet</th>
+                                        <th className="p-3 text-right">Birim Alış (Maliyet)</th>
+                                        <th className="p-3 text-right">Toplam Alış</th>
+                                        <th className="p-3 text-right">Toplam Satış (Ciro)</th>
+                                        <th className="p-3 text-right text-emerald-400">Net Kâr</th>
+                                        <th className="p-3 text-right pr-4 w-12">İşlem</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5 font-sans">
+                                      {deviceReportItems.slice((pageReportDevice - 1) * 10, pageReportDevice * 10).map((item) => {
+                                        const totalPurchase = item.purchasePrice * item.quantity;
+                                        const profit = item.totalRevenue - totalPurchase;
+
+                                        return (
+                                          <tr key={item.id} className="hover:bg-white/1 transition-colors">
+                                            <td className="p-3 pl-4 font-semibold text-white">{item.name}</td>
+                                            <td className="p-3 font-mono font-bold text-indigo-400">{item.imei || '-'}</td>
+                                            <td className="p-3 text-right font-mono font-bold text-white">{item.quantity}</td>
+                                            <td className="p-3 text-right font-mono text-secondary">{item.purchasePrice.toLocaleString('tr-TR')} TL</td>
+                                            <td className="p-3 text-right font-mono text-secondary">{totalPurchase.toLocaleString('tr-TR')} TL</td>
+                                            <td className="p-3 text-right font-mono text-white font-bold">{item.totalRevenue.toLocaleString('tr-TR')} TL</td>
+                                            <td className={\`p-3 text-right font-mono font-bold \${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}\`}>
+                                              {profit >= 0 ? '+' : ''}{profit.toLocaleString('tr-TR')} TL
+                                            </td>
+                                            <td className="p-3 text-right pr-4">
+                                              {item.id !== 'manual' && (
+                                                <button
+                                                  onClick={() => handleOpenEditProductFromReport(item.id)}
+                                                  title="Stok Kartını Düzenle"
+                                                  className="p-1 rounded hover:bg-indigo-500/10 text-indigo-400 hover:text-white cursor-pointer transition-colors"
+                                                >
+                                                  <Edit2 size={12} />
+                                                </button>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                      {/* Table summary row */}
+                                      <tr className="bg-white/2 font-bold border-t border-white/10 text-white">
+                                        <td className="p-3 pl-4" colSpan={2}>TOPLAM CİHAZ GRUBU HESABI</td>
+                                        <td className="p-3 text-right font-mono">{deviceReportItems.reduce((sum, item) => sum + item.quantity, 0)}</td>
+                                        <td className="p-3 text-right">-</td>
+                                        <td className="p-3 text-right font-mono text-secondary">{totalDevicePurchaseCost.toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right font-mono">{totalDeviceSalesRevenue.toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right font-mono text-emerald-400">{totalDeviceProfit.toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right pr-4">-</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                                {renderPagination(pageReportDevice, deviceReportItems.length, setPageReportDevice)}
+                              </>
+                            )}
+                          </div>
+
+                          {/* SECTION 2: AKSESUAR VE DİĞER ÜRÜNLER SATIŞ RAPORU */}
+                          <div className="glass-panel p-0 overflow-hidden border border-white/5 shadow-lg mt-6">
+                            <div className="p-4 border-b border-white/5 bg-white/2 flex justify-between items-center">
+                              <div className="flex items-center gap-2 text-indigo-400">
+                                <Package size={16} />
+                                <h4 className="font-bold text-sm">Aksesuar & Diğer Ürün Satış Raporu</h4>
+                              </div>
+                              <span className="text-[10px] text-indigo-400 font-semibold font-mono">{otherReportItems.length} çeşit ürün listelendi</span>
+                            </div>
+
+                            {otherReportItems.length === 0 ? (
+                              <div className="p-8 text-center text-secondary text-xs">
+                                Seçilen dönemde satış yapılmış aksesuar/diğer ürün kaydı bulunmamaktadır.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
+                                        <th className="p-3 pl-4">Ürün Adı</th>
+                                        <th className="p-3">Kategori</th>
+                                        <th className="p-3 text-right">Adet</th>
+                                        <th className="p-3 text-right">Maliyet (Alış)</th>
+                                        <th className="p-3 text-right">Toplam Alış</th>
+                                        <th className="p-3 text-right">Toplam Satış (Ciro)</th>
+                                        <th className="p-3 text-right text-emerald-400">Net Kâr</th>
+                                        <th className="p-3 text-right pr-4 w-12">İşlem</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5 font-sans">
+                                      {otherReportItems.slice((pageReportOther - 1) * 10, pageReportOther * 10).map((item) => {
+                                        const totalPurchase = item.purchasePrice * item.quantity;
+                                        const profit = item.totalRevenue - totalPurchase;
+
+                                        return (
+                                          <tr key={item.id} className="hover:bg-white/1 transition-colors">
+                                            <td className="p-3 pl-4 font-semibold text-white">{item.name}</td>
+                                            <td className="p-3 text-secondary">{item.category}</td>
+                                            <td className="p-3 text-right font-mono font-bold text-white">{item.quantity}</td>
+                                            <td className="p-3 text-right font-mono text-secondary">{(item.purchasePrice || 0).toLocaleString('tr-TR')} TL</td>
+                                            <td className="p-3 text-right font-mono text-secondary">{totalPurchase.toLocaleString('tr-TR')} TL</td>
+                                            <td className="p-3 text-right font-mono text-white font-bold">{item.totalRevenue.toLocaleString('tr-TR')} TL</td>
+                                            <td className={\`p-3 text-right font-mono font-bold \${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}\`}>
+                                              {profit >= 0 ? '+' : ''}{profit.toLocaleString('tr-TR')} TL
+                                            </td>
+                                            <td className="p-3 text-right pr-4">
+                                              {item.id !== 'manual' && (
+                                                <button
+                                                  onClick={() => handleOpenEditProductFromReport(item.id)}
+                                                  title="Stok Kartını Düzenle"
+                                                  className="p-1 rounded hover:bg-indigo-500/10 text-indigo-400 hover:text-white cursor-pointer transition-colors"
+                                                >
+                                                  <Edit2 size={12} />
+                                                </button>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                      {/* Table summary row */}
+                                      <tr className="bg-white/2 font-bold border-t border-white/10 text-white">
+                                        <td className="p-3 pl-4" colSpan={2}>TOPLAM AKSESUAR VE DİĞER</td>
+                                        <td className="p-3 text-right font-mono">{otherReportItems.reduce((sum, item) => sum + item.quantity, 0)}</td>
+                                        <td className="p-3 text-right">-</td>
+                                        <td className="p-3 text-right font-mono text-secondary">{totalOtherPurchaseCost.toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right font-mono">{totalOtherSalesRevenue.toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right font-mono text-emerald-400">{totalOtherProfit.toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right pr-4">-</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                                {renderPagination(pageReportOther, otherReportItems.length, setPageReportOther)}
+                              </>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )\`;
+
+const data = fs.readFileSync(resolvedPath, 'utf8');
+
+// We find the index of "{activeTab === 'reports' && ("
+const targetStr = "{activeTab === 'reports' && (";
+const startIndex = data.indexOf(targetStr);
+if (startIndex === -1) {
+    console.error("Could not find start index");
+    process.exit(1);
+}
+
+// We find the index of "{activeTab === 'turkcell' && ("
+const nextTabStr = "{activeTab === 'turkcell' && (";
+const nextIndex = data.indexOf(nextTabStr);
+if (nextIndex === -1) {
+    console.error("Could not find next tab index");
+    process.exit(1);
+}
+
+// We want to replace from startIndex to the closing block of reports tab, which is right before nextTabStr.
+// Let's search backwards from nextIndex for the closing "            )}" or similar.
+const blockToSearch = data.substring(startIndex, nextIndex);
+const lastClosingBrace = blockToSearch.lastIndexOf("            )}");
+if (lastClosingBrace === -1) {
+    console.error("Could not find closing brace for reports tab");
+    process.exit(1);
+}
+
+const replacementEndIndex = startIndex + lastClosingBrace + "            )}".length;
+
+const newData = data.substring(0, startIndex) + replacement_content + data.substring(replacementEndIndex);
+
+fs.writeFileSync(resolvedPath, newData, 'utf8');
+console.log("Replacement successful via Node.js!");
