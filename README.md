@@ -15,7 +15,7 @@ npm run dev
 | Değişken | Açıklama |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase proje URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
 
 Production deploy için GitHub Actions secrets olarak tanımlayın.
 

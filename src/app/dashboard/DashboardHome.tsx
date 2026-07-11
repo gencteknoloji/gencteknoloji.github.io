@@ -4468,7 +4468,7 @@ export default function DashboardHome() {
               <div className="animate-fade-in flex flex-col gap-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white mb-0.5 font-sans">Satış Raporu ve Analiz Paneli</h2>
+                    <h2 className="text-xl font-bold tracking-tight text-white mb-0.5 font-sans">Satış Analizi</h2>
                     <p className="text-secondary text-xs">Ciro, kârlılık oranları, haftalık/aylık grafik analizleri ve detaylı ürün raporları.</p>
                   </div>
                   

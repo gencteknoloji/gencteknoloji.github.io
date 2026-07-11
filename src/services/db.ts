@@ -817,9 +817,9 @@ export const dbService = {
         'turkcell_devices', COALESCE((SELECT json_agg(td) FROM (SELECT * FROM turkcell_devices ORDER BY date_added DESC, id DESC) td), '[]'::json),
         'daily_closings', COALESCE((SELECT json_agg(dc) FROM (SELECT * FROM daily_closings ORDER BY date DESC) dc), '[]'::json),
         'dashboard', json_build_object(
-          'todaySales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date = $1), 0),
-          'weekSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= $2), 0),
-          'monthSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= $3), 0),
+          'todaySales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date = ?), 0),
+          'weekSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= ?), 0),
+          'monthSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= ?), 0),
           'totalCariReceivables', COALESCE((SELECT SUM(balance) FROM cariler WHERE balance > 0), 0),
           'criticalStockCount', (SELECT COUNT(*) FROM products WHERE category != 'Hizmet' AND stock < 5),
           'totalSalesCount', (SELECT COUNT(*) FROM sales),
@@ -842,18 +842,25 @@ export const dbService = {
         ),
         'weeklySalesRaw', COALESCE((
           SELECT json_agg(t) FROM (
-            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= $2 GROUP BY date
+            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date
           ) t
         ), '[]'::json),
         'monthlySalesRaw', COALESCE((
           SELECT json_agg(t) FROM (
-            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= $4 AND date <= $5 GROUP BY date
+            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? AND date <= ? GROUP BY date
           ) t
         ), '[]'::json)
       ) as payload
     `;
 
-    const res = await db.get<{ payload: any }>(sql, [todayStr, sevenDaysAgoStr, thirtyDaysAgoStr, startOfMonth, endOfMonth]);
+    const res = await db.get<{ payload: any }>(sql, [
+      todayStr,
+      sevenDaysAgoStr,
+      thirtyDaysAgoStr,
+      sevenDaysAgoStr,
+      startOfMonth,
+      endOfMonth
+    ]);
     
     const payload = res?.payload || {
       cariler: [],
