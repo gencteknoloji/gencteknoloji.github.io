@@ -720,7 +720,7 @@ export default function DashboardHome() {
       const pDate = editingClosing.date;
       const pastSales = sales.filter(s => s.date === pDate);
       const pastExpenses = expensesList
-        .filter(exp => exp.date === pDate && (!exp.category || exp.category === 'Genel Gider'))
+        .filter(exp => exp.date === pDate)
         .reduce((sum, exp) => sum + (toNum(exp.amount) || 0), 0);
 
       const cashRev = pastSales
@@ -2278,7 +2278,7 @@ export default function DashboardHome() {
                     .filter(s => s.payment_method === 'Nakit')
                     .reduce((sum, s) => sum + (toNum(s.total_amount) || 0), 0);
                     
-                  const totalCashRevenue = cashRevenue + kSales + fPayments - todayExpenses;
+                  const totalCashRevenue = cashRevenue + kSales + fPayments - todayExpenses - todayOtherExits;
                     
                   const cardRevenue = todaySales
                     .filter(s => s.payment_method === 'Kredi Kartı')
@@ -2331,7 +2331,7 @@ export default function DashboardHome() {
                         <div className="glass-panel p-4 border border-white/5 bg-gradient-to-br from-emerald-600/10 to-teal-600/10 relative overflow-hidden group">
                           <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Nakit Tahsilat</span>
                           <h3 className="text-2xl font-black text-white mt-1.5 font-mono">{totalCashRevenue.toLocaleString('tr-TR')} TL</h3>
-                          <p className="text-[10px] text-secondary mt-1">Sistem: {cashRevenue.toLocaleString('tr-TR')} TL + Ek: {(kSales + fPayments).toLocaleString('tr-TR')} TL - Kasa Gideri: {todayExpenses.toLocaleString('tr-TR')} TL{todayOtherExits > 0 ? ` (Diğer Çıkış: ${todayOtherExits.toLocaleString('tr-TR')} TL)` : ''}</p>
+                          <p className="text-[10px] text-secondary mt-1">Sistem: {cashRevenue.toLocaleString('tr-TR')} TL + Ek: {(kSales + fPayments).toLocaleString('tr-TR')} TL - Kasa Gideri: {todayExpenses.toLocaleString('tr-TR')} TL{todayOtherExits > 0 ? ` - Çıkış: ${todayOtherExits.toLocaleString('tr-TR')} TL` : ''}</p>
                         </div>
 
                         <div className="glass-panel p-4 border border-white/5 bg-gradient-to-br from-cyan-600/10 to-blue-600/10 relative overflow-hidden group">
@@ -2437,7 +2437,7 @@ export default function DashboardHome() {
                                     {expectedCash.toLocaleString('tr-TR')} TL
                                   </span>
                                   <span className="text-[8px] text-muted/60 mt-0.5 font-sans leading-tight">
-                                    (Sistem: {cashRevenue.toLocaleString('tr-TR')} + Kontör: {kSales.toLocaleString('tr-TR')} + Fatura: {fPayments.toLocaleString('tr-TR')} - Kasa Gideri: {todayExpenses.toLocaleString('tr-TR')})
+                                    (Sistem: {cashRevenue.toLocaleString('tr-TR')} + Kontör: {kSales.toLocaleString('tr-TR')} + Fatura: {fPayments.toLocaleString('tr-TR')} - Kasa Gideri: {todayExpenses.toLocaleString('tr-TR')}{todayOtherExits > 0 ? ` - Çıkış: ${todayOtherExits.toLocaleString('tr-TR')}` : ''})
                                   </span>
                                 </div>
 
@@ -4782,33 +4782,34 @@ export default function DashboardHome() {
                       
                       let salesForReport = [];
                       let expensesForReport = [];
+                      const isGenel = (e) => !e.category || e.category === 'Genel Gider';
                       if (reportRangeFilter === 'today') {
                         salesForReport = sales.filter(s => s.date === todayStr);
-                        expensesForReport = expensesList.filter(e => e.date === todayStr);
+                        expensesForReport = expensesList.filter(e => e.date === todayStr && isGenel(e));
                       } else if (reportRangeFilter === '7days') {
                         const limitDate = new Date();
                         limitDate.setDate(today.getDate() - 7);
                         const limitStr = limitDate.toLocaleDateString('sv-SE');
                         salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
-                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr);
+                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr && isGenel(e));
                       } else if (reportRangeFilter === 'month') {
                         const limitDate = new Date();
                         limitDate.setMonth(today.getMonth() - 1);
                         const limitStr = limitDate.toLocaleDateString('sv-SE');
                         salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
-                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr);
+                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr && isGenel(e));
                       } else if (reportRangeFilter === '3months') {
                         const limitDate = new Date();
                         limitDate.setMonth(today.getMonth() - 3);
                         const limitStr = limitDate.toLocaleDateString('sv-SE');
                         salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
-                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr);
+                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr && isGenel(e));
                       } else if (reportRangeFilter === 'all') {
                         salesForReport = sales;
-                        expensesForReport = expensesList;
+                        expensesForReport = expensesList.filter(e => isGenel(e));
                       } else {
                         salesForReport = sales.filter(s => s.date === reportDateFilter);
-                        expensesForReport = expensesList.filter(e => e.date === reportDateFilter);
+                        expensesForReport = expensesList.filter(e => e.date === reportDateFilter && isGenel(e));
                       }
 
                       const totalExpensesForReport = expensesForReport.reduce((sum, e) => sum + e.amount, 0);

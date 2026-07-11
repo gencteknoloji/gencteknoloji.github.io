@@ -539,7 +539,7 @@ export const dbService = {
       db.get<{ count: number }>("SELECT COUNT(*) as count FROM products WHERE category != 'Hizmet' AND stock < 5"),
       db.get<{ count: number }>('SELECT COUNT(*) as count FROM sales'),
       db.get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) as total FROM turkcell_premiums'),
-      db.get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) as total FROM expenses'),
+      db.get<{ total: number }>("SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE category = 'Genel Gider' OR category IS NULL"),
       db.get<{ total: number }>(`
         SELECT COALESCE(SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity), 0) as total 
         FROM sale_items s_item 
@@ -825,7 +825,7 @@ export const dbService = {
           'criticalStockCount', (SELECT COUNT(*) FROM products WHERE category != 'Hizmet' AND stock < 5),
           'totalSalesCount', (SELECT COUNT(*) FROM sales),
           'totalTurkcellProfit', COALESCE((SELECT SUM(amount) FROM turkcell_premiums), 0),
-          'totalExpenses', COALESCE((SELECT SUM(amount) FROM expenses), 0),
+          'totalExpenses', COALESCE((SELECT SUM(amount) FROM expenses WHERE category = 'Genel Gider' OR category IS NULL), 0),
           'totalCihazProfit', COALESCE((
             SELECT SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity) 
             FROM sale_items s_item 
