@@ -308,11 +308,29 @@ export const dbService = {
   async addSale(sale: SaleInput) {
     const client = getSupabaseClient();
     if (client) {
-      const { data, error } = await client.rpc('add_sale_atomic', { sale_data: sale });
-      if (error) throw new Error(error.message);
+      // Veriyi temizleyerek gönder
+      const cleanedSale = {
+        cari_id: sale.cari_id || 'pesin',
+        date: sale.date || new Date().toLocaleDateString('sv-SE'),
+        payment_method: sale.payment_method || 'Nakit',
+        notes: sale.notes || '',
+        total_amount: Number(sale.total_amount) || 0,
+        items: (sale.items || []).map(item => ({
+          product_id: String(item.product_id || 'manual'),
+          name: String(item.name || ''),
+          price: Number(item.price) || 0,
+          quantity: Number(item.quantity) || 1,
+        }))
+      };
+      console.log('[addSale] Gönderilen veri:', JSON.stringify(cleanedSale));
+      const { data, error } = await client.rpc('add_sale_atomic', { sale_data: cleanedSale });
+      if (error) {
+        console.error('[addSale] Supabase RPC hatası:', error);
+        throw new Error(error.message);
+      }
       return data;
     }
-    throw new Error('Supabase client not initialized');
+    throw new Error('Supabase bağlantısı başlatılamadı!');
   },
 
   async deleteSale(id: string) {

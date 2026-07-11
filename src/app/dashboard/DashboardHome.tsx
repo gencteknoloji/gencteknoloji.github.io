@@ -991,8 +991,16 @@ export default function DashboardHome() {
     }
 
     try {
+      // cari_id mantığı: 
+      // - Perakende satışta her zaman 'pesin'
+      // - Cari satışta sadece 'Cari (Borç)' yöntemi seçildiyse cari ID kullan, aksi halde 'pesin'
+      const effectiveCariId = 
+        saleType === 'perakende' 
+          ? 'pesin' 
+          : (paymentMethod === 'Cari (Borç)' ? selectedCariId : 'pesin');
+
       const saleData = {
-        cari_id: selectedCariId,
+        cari_id: effectiveCariId,
         items: saleItems,
         total_amount: cartTotal,
         payment_method: paymentMethod,
@@ -1013,7 +1021,8 @@ export default function DashboardHome() {
       await loadAllData();
       alert("Satış başarıyla kaydedildi!");
     } catch (error: unknown) {
-      alert("Satış kaydedilirken hata oluştu: " + getErrorMessage(error));
+      console.error('[handleCompleteSale] Hata:', error);
+      alert("Satış kaydedilirken hata oluştu:\n" + getErrorMessage(error));
     }
   };
 
