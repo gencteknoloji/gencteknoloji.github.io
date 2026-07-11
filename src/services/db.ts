@@ -479,12 +479,13 @@ export const dbService = {
       date: expense.date,
       description: expense.description,
       amount: toNum(expense.amount) || 0,
-      notes: expense.notes || ''
+      notes: expense.notes || '',
+      category: expense.category || 'Genel Gider'
     };
     await db.run(
-      `INSERT INTO expenses (id, date, description, amount, notes) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [newExpense.id, newExpense.date, newExpense.description, newExpense.amount, newExpense.notes]
+      `INSERT INTO expenses (id, date, description, amount, notes, category) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [newExpense.id, newExpense.date, newExpense.description, newExpense.amount, newExpense.notes, newExpense.category]
     );
     return newExpense;
   },
@@ -492,9 +493,9 @@ export const dbService = {
   async updateExpense(id: string, expense: ExpenseInput) {
     await db.run(
       `UPDATE expenses 
-       SET date = ?, description = ?, amount = ?, notes = ? 
+       SET date = ?, description = ?, amount = ?, notes = ?, category = ? 
        WHERE id = ?`,
-      [expense.date, expense.description, toNum(expense.amount) || 0, expense.notes, id]
+      [expense.date, expense.description, toNum(expense.amount) || 0, expense.notes, expense.category || 'Genel Gider', id]
     );
     return { success: true };
   },

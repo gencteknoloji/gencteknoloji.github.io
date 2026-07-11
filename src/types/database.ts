@@ -70,6 +70,7 @@ export interface Expense {
   description: string;
   amount: number;
   notes: string;
+  category?: string;
 }
 
 export interface TurkcellDevice {
@@ -246,6 +247,7 @@ export interface ExpenseForm {
   description: string;
   amount: string;
   notes: string;
+  category: string;
 }
 
 export interface EditingSaleItem {
@@ -285,6 +287,7 @@ export type ExpenseInput = {
   description: string;
   amount?: string | number;
   notes?: string;
+  category?: string;
 };
 
 export type TurkcellDeviceInput = {

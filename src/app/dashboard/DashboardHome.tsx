@@ -148,7 +148,7 @@ const ALL_TABS = [
   { key: 'turkcell_stock', label: 'Turkcell Cihaz Stok' },
   { key: 'cariler', label: 'Müşteri Hesaplar' },
   { key: 'debt', label: 'Müşteri Borç Takibi' },
-  { key: 'reports', label: 'Satış Raporu & Analiz' },
+  { key: 'reports', label: 'Satış Analizi' },
   { key: 'turkcell', label: 'Turkcell Prim' }
 ];
 
@@ -171,7 +171,7 @@ const SIDEBAR_GROUPS: { title: string; items: SidebarNavItem[]; accent?: 'turkce
   {
     title: 'Analiz & Rapor',
     items: [
-      { key: 'reports', label: 'Satış Raporu & Analiz', icon: TrendingUp },
+      { key: 'reports', label: 'Satış Analizi', icon: TrendingUp },
       { key: 'history', label: 'Satış Geçmişi', icon: ArrowRightLeft },
     ],
   },
@@ -466,7 +466,7 @@ export default function DashboardHome() {
 
   // EXPENSE STATE
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
-  const [newExpense, setNewExpense] = useState<ExpenseForm>({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '' });
+  const [newExpense, setNewExpense] = useState<ExpenseForm>({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '', category: 'Genel Gider' });
 
   // NETWORK STATE
   const [serverIp, setServerIp] = useState('localhost');
@@ -720,7 +720,7 @@ export default function DashboardHome() {
       const pDate = editingClosing.date;
       const pastSales = sales.filter(s => s.date === pDate);
       const pastExpenses = expensesList
-        .filter(exp => exp.date === pDate)
+        .filter(exp => exp.date === pDate && (!exp.category || exp.category === 'Genel Gider'))
         .reduce((sum, exp) => sum + (toNum(exp.amount) || 0), 0);
 
       const cashRev = pastSales
@@ -1183,7 +1183,7 @@ export default function DashboardHome() {
     if (!newExpense.description || !newExpense.amount) return;
     try {
       await dbService.addExpense(newExpense);
-      setNewExpense({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '' });
+      setNewExpense({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '', category: 'Genel Gider' });
       await loadAllData();
     } catch (err: unknown) {
       alert(getErrorMessage(err));
@@ -2135,7 +2135,7 @@ export default function DashboardHome() {
                       </div>
 
                       <form onSubmit={handleCreateExpense} className="flex flex-col gap-2.5 text-[11px] mb-3">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <div>
                             <label className="text-[9px] text-secondary block mb-0.5 font-sans">Tarih</label>
                             <input 
@@ -2145,6 +2145,21 @@ export default function DashboardHome() {
                               value={newExpense.date}
                               onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
                             />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-secondary block mb-0.5 font-bold font-sans">Kategori*</label>
+                            <select 
+                              required
+                              className="custom-input py-1 text-[11px] h-8 bg-neutral-900 border-white/10"
+                              value={newExpense.category}
+                              onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
+                              style={{ colorScheme: 'dark' }}
+                            >
+                              <option value="Genel Gider">Genel Gider</option>
+                              <option value="Kargo">Kargo</option>
+                              <option value="Emanet">Emanet</option>
+                              <option value="Teknik Servis">Teknik Servis</option>
+                            </select>
                           </div>
                           <div>
                             <label className="text-[9px] text-secondary block mb-0.5 font-bold font-sans">Tutar (TL)*</label>
@@ -2184,8 +2199,18 @@ export default function DashboardHome() {
                           <div className="flex flex-col gap-1">
                             {expensesList.map((expense) => (
                               <div key={expense.id} className="p-2 rounded bg-white/2 border border-white/5 flex items-center justify-between text-[10px] hover:bg-white/5 transition-colors">
-                                <div className="min-w-0 pr-2">
-                                  <span className="font-semibold text-white truncate block max-w-[130px] font-sans">{expense.description}</span>
+                                <div className="min-w-0 pr-2 flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-white truncate block max-w-[110px] font-sans">{expense.description}</span>
+                                    <span className={`text-[7px] px-1 py-0.2 rounded font-bold font-mono ${
+                                      expense.category === 'Kargo' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/10' :
+                                      expense.category === 'Emanet' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/10' :
+                                      expense.category === 'Teknik Servis' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/10' :
+                                      'bg-emerald-500/20 text-emerald-400 border border-emerald-500/10'
+                                    }`}>
+                                      {expense.category || 'Genel Gider'}
+                                    </span>
+                                  </div>
                                   <span className="text-[8px] text-secondary font-mono">{expense.date}</span>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
@@ -2231,7 +2256,11 @@ export default function DashboardHome() {
                   const kSales = toNum(kontorSales) || 0;
                   const fPayments = toNum(faturaPayments) || 0;
                   const todayExpenses = expensesList
-                    .filter(e => e.date === todayStr)
+                    .filter(e => e.date === todayStr && (!e.category || e.category === 'Genel Gider'))
+                    .reduce((sum, e) => sum + (toNum(e.amount) || 0), 0);
+
+                  const todayOtherExits = expensesList
+                    .filter(e => e.date === todayStr && e.category && e.category !== 'Genel Gider')
                     .reduce((sum, e) => sum + (toNum(e.amount) || 0), 0);
 
                   // Calculate metrics
@@ -2295,7 +2324,7 @@ export default function DashboardHome() {
                         <div className="glass-panel p-4 border border-white/5 bg-gradient-to-br from-emerald-600/10 to-teal-600/10 relative overflow-hidden group">
                           <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Nakit Tahsilat</span>
                           <h3 className="text-2xl font-black text-white mt-1.5 font-mono">{totalCashRevenue.toLocaleString('tr-TR')} TL</h3>
-                          <p className="text-[10px] text-secondary mt-1">Sistem: {cashRevenue.toLocaleString('tr-TR')} TL + Ek: {(kSales + fPayments).toLocaleString('tr-TR')} TL - Gider: {todayExpenses.toLocaleString('tr-TR')} TL</p>
+                          <p className="text-[10px] text-secondary mt-1">Sistem: {cashRevenue.toLocaleString('tr-TR')} TL + Ek: {(kSales + fPayments).toLocaleString('tr-TR')} TL - Kasa Gideri: {todayExpenses.toLocaleString('tr-TR')} TL{todayOtherExits > 0 ? ` (Diğer Çıkış: ${todayOtherExits.toLocaleString('tr-TR')} TL)` : ''}</p>
                         </div>
 
                         <div className="glass-panel p-4 border border-white/5 bg-gradient-to-br from-cyan-600/10 to-blue-600/10 relative overflow-hidden group">
@@ -2401,7 +2430,7 @@ export default function DashboardHome() {
                                     {expectedCash.toLocaleString('tr-TR')} TL
                                   </span>
                                   <span className="text-[8px] text-muted/60 mt-0.5 font-sans leading-tight">
-                                    (Sistem: {cashRevenue.toLocaleString('tr-TR')} + Kontör: {kSales.toLocaleString('tr-TR')} + Fatura: {fPayments.toLocaleString('tr-TR')} - Gider: {todayExpenses.toLocaleString('tr-TR')})
+                                    (Sistem: {cashRevenue.toLocaleString('tr-TR')} + Kontör: {kSales.toLocaleString('tr-TR')} + Fatura: {fPayments.toLocaleString('tr-TR')} - Kasa Gideri: {todayExpenses.toLocaleString('tr-TR')})
                                   </span>
                                 </div>
 
@@ -4639,7 +4668,17 @@ export default function DashboardHome() {
                               expensesList.slice(0, 5).map(exp => (
                                 <div key={exp.id} className="p-3 rounded-lg bg-red-500/5 border border-red-500/10 flex justify-between items-center text-xs">
                                   <div>
-                                    <h5 className="font-semibold text-white truncate max-w-[150px]">{exp.description}</h5>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <h5 className="font-semibold text-white truncate max-w-[120px]">{exp.description}</h5>
+                                      <span className={`text-[7px] px-1 py-0.2 rounded font-bold font-mono ${
+                                        exp.category === 'Kargo' ? 'bg-orange-500/25 text-orange-400 border border-orange-500/10' :
+                                        exp.category === 'Emanet' ? 'bg-blue-500/25 text-blue-400 border border-blue-500/10' :
+                                        exp.category === 'Teknik Servis' ? 'bg-purple-500/25 text-purple-400 border border-purple-500/10' :
+                                        'bg-emerald-500/25 text-emerald-400 border border-emerald-500/10'
+                                      }`}>
+                                        {exp.category || 'Genel Gider'}
+                                      </span>
+                                    </div>
                                     <span className="text-[10px] text-muted block mt-0.5">{exp.date}</span>
                                   </div>
                                   <span className="text-red-400 font-bold bg-red-500/15 px-2 py-0.5 rounded font-mono shrink-0">
@@ -6346,7 +6385,7 @@ export default function DashboardHome() {
                 <span className="font-bold text-white border-b border-white/5 pb-1 mb-1 font-sans">O Günün Sistem Özetleri:</span>
                 <span>Nakit Satışlar: {(toNum(editingClosing.cash_revenue) || 0).toLocaleString('tr-TR')} TL</span>
                 <span>Kart Satışları (POS): {(toNum(editingClosing.card_revenue) || 0).toLocaleString('tr-TR')} TL</span>
-                <span>Ödenen Giderler: {(toNum(editingClosing.today_expenses) || 0).toLocaleString('tr-TR')} TL</span>
+                <span>Ödenen Kasa Giderleri: {(toNum(editingClosing.today_expenses) || 0).toLocaleString('tr-TR')} TL</span>
               </div>
 
               <div className="flex justify-end gap-2 mt-4">
