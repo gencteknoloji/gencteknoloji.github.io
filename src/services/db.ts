@@ -579,7 +579,7 @@ export const dbService = {
     // Map weekly chart in memory
     const weeklyChartMap: Record<string, number> = {};
     weeklySalesRows.forEach(r => {
-      weeklyChartMap[r.date] = r.total;
+      weeklyChartMap[r.date] = Number(r.total) || 0;
     });
 
     const weeklyChart: ChartPoint[] = [];
@@ -596,7 +596,7 @@ export const dbService = {
     // Map monthly chart in memory
     const monthMap: Record<string, number> = {};
     monthSalesRows.forEach(r => {
-      monthMap[r.date] = r.total;
+      monthMap[r.date] = Number(r.total) || 0;
     });
 
     const monthlyChart: ChartPoint[] = [];
@@ -907,8 +907,11 @@ export const dbService = {
     };
 
     const weeklyChartMap: Record<string, number> = {};
-    (payload.weeklySalesRaw || []).forEach((r: any) => {
-      weeklyChartMap[r.date] = r.total;
+    const weeklySalesRawParsed = typeof payload.weeklySalesRaw === 'string'
+      ? JSON.parse(payload.weeklySalesRaw)
+      : (payload.weeklySalesRaw || []);
+    (weeklySalesRawParsed || []).forEach((r: any) => {
+      weeklyChartMap[r.date] = Number(r.total) || 0;
     });
 
     const weeklyChart: ChartPoint[] = [];
@@ -923,8 +926,11 @@ export const dbService = {
     }
 
     const monthMap: Record<string, number> = {};
-    (payload.monthlySalesRaw || []).forEach((r: any) => {
-      monthMap[r.date] = r.total;
+    const monthlySalesRawParsed = typeof payload.monthlySalesRaw === 'string'
+      ? JSON.parse(payload.monthlySalesRaw)
+      : (payload.monthlySalesRaw || []);
+    (monthlySalesRawParsed || []).forEach((r: any) => {
+      monthMap[r.date] = Number(r.total) || 0;
     });
 
     const monthlyChart: ChartPoint[] = [];
