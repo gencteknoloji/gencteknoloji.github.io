@@ -4866,6 +4866,13 @@ export default function DashboardHome() {
                       const deviceReportItems = allAggregatedItems.filter(item => item.type === 'Cihaz');
                       const otherReportItems = allAggregatedItems.filter(item => item.type !== 'Cihaz');
 
+                      // Helper: tamir stok kartı mı? (type=Hizmet veya adı 'tamir'/'tamır' olan ürünler)
+                      // Bu ürünler sadece kasaya işlenir, kâr hesabına DAHIL EDİLMEZ
+                      const isRepairItem = (item: any) => {
+                        const name = (item.name || '').toLowerCase().trim();
+                        return item.type === 'Hizmet' || name === 'tamir' || name === 'tamır';
+                      };
+
                       // Calculations
                       const totalRevenue = allAggregatedItems.reduce((sum, item) => sum + item.totalRevenue, 0);
                       const totalSoldQty = allAggregatedItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -4876,8 +4883,10 @@ export default function DashboardHome() {
                       const totalDeviceProfit = totalDeviceSalesRevenue - totalDevicePurchaseCost;
 
                       // Accessory profitability calculations
-                      const totalOtherPurchaseCost = otherReportItems.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
-                      const totalOtherSalesRevenue = otherReportItems.reduce((sum, item) => sum + item.totalRevenue, 0);
+                      // Tamir ürünleri kâr hesabına dahil edilmez, sadece ciro olarak işlenir
+                      const nonRepairOtherItems = otherReportItems.filter(item => !isRepairItem(item));
+                      const totalOtherPurchaseCost = nonRepairOtherItems.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
+                      const totalOtherSalesRevenue = nonRepairOtherItems.reduce((sum, item) => sum + item.totalRevenue, 0);
                       const totalOtherProfit = totalOtherSalesRevenue - totalOtherPurchaseCost;
 
                       return (
@@ -5016,19 +5025,23 @@ export default function DashboardHome() {
                                     </thead>
                                     <tbody className="divide-y divide-white/5 font-sans">
                                       {otherReportItems.slice((pageReportOther - 1) * 10, pageReportOther * 10).map((item) => {
-                                        const totalPurchase = item.purchasePrice * item.quantity;
-                                        const profit = item.totalRevenue - totalPurchase;
+                                        const isRepair = isRepairItem(item);
+                                        const totalPurchase = isRepair ? 0 : item.purchasePrice * item.quantity;
+                                        const profit = isRepair ? null : (item.totalRevenue - totalPurchase);
 
                                         return (
-                                          <tr key={item.id} className="hover:bg-white/1 transition-colors">
-                                            <td className="p-3 pl-4 font-semibold text-white">{item.name}</td>
+                                          <tr key={item.id} className={`hover:bg-white/1 transition-colors ${isRepair ? 'opacity-80' : ''}`}>
+                                            <td className="p-3 pl-4 font-semibold text-white">
+                                              {item.name}
+                                              {isRepair && <span className="ml-1 text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded px-1 py-0.5 align-middle">Sadece Kasa</span>}
+                                            </td>
                                             <td className="p-3 text-secondary">{item.category}</td>
                                             <td className="p-3 text-right font-mono font-bold text-white">{item.quantity}</td>
-                                            <td className="p-3 text-right font-mono text-secondary">{(item.purchasePrice || 0).toLocaleString('tr-TR')} TL</td>
-                                            <td className="p-3 text-right font-mono text-secondary">{totalPurchase.toLocaleString('tr-TR')} TL</td>
+                                            <td className="p-3 text-right font-mono text-secondary">{isRepair ? '-' : (item.purchasePrice || 0).toLocaleString('tr-TR') + ' TL'}</td>
+                                            <td className="p-3 text-right font-mono text-secondary">{isRepair ? '-' : totalPurchase.toLocaleString('tr-TR') + ' TL'}</td>
                                             <td className="p-3 text-right font-mono text-white font-bold">{item.totalRevenue.toLocaleString('tr-TR')} TL</td>
-                                            <td className={`p-3 text-right font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                              {profit >= 0 ? '+' : ''}{profit.toLocaleString('tr-TR')} TL
+                                            <td className={`p-3 text-right font-mono font-bold ${profit === null ? 'text-amber-400' : profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                              {profit === null ? '— Kasa Geliri' : (profit >= 0 ? '+' : '') + profit.toLocaleString('tr-TR') + ' TL'}
                                             </td>
                                             <td className="p-3 text-right pr-4">
                                               {item.id !== 'manual' && (
@@ -5050,8 +5063,8 @@ export default function DashboardHome() {
                                         <td className="p-3 text-right font-mono">{otherReportItems.reduce((sum, item) => sum + item.quantity, 0)}</td>
                                         <td className="p-3 text-right">-</td>
                                         <td className="p-3 text-right font-mono text-secondary">{totalOtherPurchaseCost.toLocaleString('tr-TR')} TL</td>
-                                        <td className="p-3 text-right font-mono">{totalOtherSalesRevenue.toLocaleString('tr-TR')} TL</td>
-                                        <td className="p-3 text-right font-mono text-emerald-400">{totalOtherProfit.toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right font-mono">{otherReportItems.reduce((sum, item) => sum + item.totalRevenue, 0).toLocaleString('tr-TR')} TL</td>
+                                        <td className="p-3 text-right font-mono text-emerald-400">{totalOtherProfit.toLocaleString('tr-TR')} TL <span className="text-[9px] text-amber-400/80 font-normal">(tamir hariç)</span></td>
                                         <td className="p-3 text-right pr-4">-</td>
                                       </tr>
                                     </tbody>
