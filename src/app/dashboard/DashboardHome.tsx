@@ -5037,7 +5037,7 @@ export default function DashboardHome() {
                                         <span className="font-bold text-white font-mono">{aksesuarSales.toLocaleString('tr-TR')} TL</span>
                                       </div>
                                       <div className="flex justify-between items-center text-xs text-secondary pb-1">
-                                        <span>Tamir / Teknik Servis Geliri:</span>
+                                        <span>Teknik Servis Geliri:</span>
                                         <span className="font-bold text-white font-mono">{(breakdownData.tamirSales || 0).toLocaleString('tr-TR')} TL</span>
                                       </div>
                                       <div className="flex justify-between items-center text-xs font-bold text-emerald-400 border-t border-white/10 pt-2 mt-1">
@@ -5056,7 +5056,7 @@ export default function DashboardHome() {
                                         <span className="font-bold text-white font-mono">{totalExpenses.toLocaleString('tr-TR')} TL</span>
                                       </div>
                                       <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                        <span>Teknik Servis Giderleri:</span>
+                                        <span>Teknik Servis Gideri:</span>
                                         <span className="font-bold text-white font-mono">{(breakdownData.teknikServisExpenses || 0).toLocaleString('tr-TR')} TL</span>
                                       </div>
                                       <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
