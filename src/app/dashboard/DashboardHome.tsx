@@ -572,12 +572,8 @@ export default function DashboardHome() {
   // Breakdown states for accordion (lazy loaded)
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [breakdownData, setBreakdownData] = useState<{
-    tamirSales: number;
-    teknikServisExpenses: number;
-    kargoExpenses: number;
-    emanetExpenses: number;
-    sirketExpenses: number;
-    toplamGider: number;
+    salesList: { category: string; total_amount: number }[];
+    expensesList: { category: string; total_amount: number }[];
   } | null>(null);
   const [isBreakdownLoading, setIsBreakdownLoading] = useState(false);
   const [dateSales, setDateSales] = useState<Record<string, any[]>>({});
@@ -5028,18 +5024,18 @@ export default function DashboardHome() {
                                   <div className="flex flex-col gap-3">
                                     <h5 className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Gelir Kaynakları (Artılar)</h5>
                                     <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
-                                      <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                        <span>Cihaz Satış Geliri:</span>
-                                        <span className="font-bold text-white font-mono">{cihazSales.toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                        <span>Aksesuar Satış Geliri:</span>
-                                        <span className="font-bold text-white font-mono">{aksesuarSales.toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-xs text-secondary pb-1">
-                                        <span>Teknik Servis Geliri:</span>
-                                        <span className="font-bold text-white font-mono">{(breakdownData.tamirSales || 0).toLocaleString('tr-TR')} TL</span>
-                                      </div>
+                                      {breakdownData.salesList.map((item: any, i: number) => {
+                                        const displayName = item.category === 'Tamir & Teknik Servis' ? 'Teknik Servis Geliri' : item.category;
+                                        return (
+                                          <div key={i} className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                                            <span>{displayName}:</span>
+                                            <span className="font-bold text-white font-mono">{item.total_amount.toLocaleString('tr-TR')} TL</span>
+                                          </div>
+                                        );
+                                      })}
+                                      {breakdownData.salesList.length === 0 && (
+                                        <div className="text-xs text-secondary italic py-2 text-center">Gelir kaydı yok</div>
+                                      )}
                                       <div className="flex justify-between items-center text-xs font-bold text-emerald-400 border-t border-white/10 pt-2 mt-1">
                                         <span>Toplam Gelir (Ciro):</span>
                                         <span className="font-mono">{totalSales.toLocaleString('tr-TR')} TL</span>
@@ -5051,29 +5047,21 @@ export default function DashboardHome() {
                                   <div className="flex flex-col gap-3">
                                     <h5 className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Gider ve Çıkışlar (Eksiler)</h5>
                                     <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
-                                      <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                        <span>Genel Giderler:</span>
-                                        <span className="font-bold text-white font-mono">{totalExpenses.toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                        <span>Teknik Servis Gideri:</span>
-                                        <span className="font-bold text-white font-mono">{(breakdownData.teknikServisExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                        <span>Kargo Giderleri:</span>
-                                        <span className="font-bold text-white font-mono">{(breakdownData.kargoExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                        <span>Emanet Giderleri:</span>
-                                        <span className="font-bold text-white font-mono">{(breakdownData.emanetExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-xs text-secondary pb-1">
-                                        <span>Şirket Giderleri (Kasa Harici):</span>
-                                        <span className="font-bold text-white font-mono">{(breakdownData.sirketExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                                      </div>
+                                      {breakdownData.expensesList.map((item: any, i: number) => {
+                                        const displayName = item.category === 'Teknik Servis' ? 'Teknik Servis Gideri' : item.category;
+                                        return (
+                                          <div key={i} className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                                            <span>{displayName}:</span>
+                                            <span className="font-bold text-white font-mono">{item.total_amount.toLocaleString('tr-TR')} TL</span>
+                                          </div>
+                                        );
+                                      })}
+                                      {breakdownData.expensesList.length === 0 && (
+                                        <div className="text-xs text-secondary italic py-2 text-center">Gider kaydı yok</div>
+                                      )}
                                       <div className="flex justify-between items-center text-xs font-bold text-red-400 border-t border-white/10 pt-2 mt-1">
                                         <span>Toplam Brüt Gider (Tümü):</span>
-                                        <span className="font-mono">{(breakdownData.toplamGider || 0).toLocaleString('tr-TR')} TL</span>
+                                        <span className="font-mono">{(breakdownData.expensesList.reduce((sum: number, it: any) => sum + it.total_amount, 0)).toLocaleString('tr-TR')} TL</span>
                                       </div>
                                     </div>
                                   </div>
@@ -5082,7 +5070,8 @@ export default function DashboardHome() {
 
                                 {/* Genel Kar-Zarar Bölümü */}
                                 {(() => {
-                                  const genelNetKar = totalSales - (breakdownData.toplamGider || 0);
+                                  const totalGider = breakdownData.expensesList.reduce((sum: number, it: any) => sum + it.total_amount, 0);
+                                  const genelNetKar = totalSales - totalGider;
                                   const isPositive = genelNetKar >= 0;
                                   return (
                                     <div className={`glass-panel p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${

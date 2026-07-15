@@ -1113,52 +1113,36 @@ export const dbService = {
   },
 
   async getAnalysisBreakdown(startDate: string, endDate: string): Promise<any> {
-    const sql = `
-      SELECT json_build_object(
-        'tamirSales', COALESCE((
-          SELECT SUM(si.price * si.quantity) 
-          FROM sale_items si 
-          JOIN products p ON si.product_id = p.id
-          JOIN sales s ON si.sale_id = s.id
-          WHERE s.date >= ? AND s.date <= ? 
-            AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
-        ), 0),
-        'teknikServisExpenses', COALESCE((
-          SELECT SUM(amount) FROM expenses 
-          WHERE date >= ? AND date <= ? AND category = 'Teknik Servis'
-        ), 0),
-        'kargoExpenses', COALESCE((
-          SELECT SUM(amount) FROM expenses 
-          WHERE date >= ? AND date <= ? AND category = 'Kargo'
-        ), 0),
-        'emanetExpenses', COALESCE((
-          SELECT SUM(amount) FROM expenses 
-          WHERE date >= ? AND date <= ? AND category = 'Emanet'
-        ), 0),
-        'sirketExpenses', COALESCE((
-          SELECT SUM(amount) FROM expenses 
-          WHERE date >= ? AND date <= ? AND category = 'Şirket Giderleri'
-        ), 0),
-        'toplamGider', COALESCE((
-          SELECT SUM(amount) FROM expenses 
-          WHERE date >= ? AND date <= ?
-        ), 0)
-      ) as payload
+    const salesSql = `
+      SELECT 
+        CASE 
+          WHEN p.category IS NOT NULL THEN p.category
+          WHEN LOWER(TRIM(si.name)) LIKE '%tamir%' OR LOWER(TRIM(si.name)) LIKE '%servis%' THEN 'Teknik Servis Geliri'
+          ELSE 'Diğer'
+        END as category,
+        SUM(si.price * si.quantity) as total_amount
+      FROM sale_items si
+      LEFT JOIN products p ON si.product_id = p.id
+      JOIN sales s ON si.sale_id = s.id
+      WHERE s.date >= ? AND s.date <= ?
+      GROUP BY 1
+      ORDER BY total_amount DESC
     `;
 
-    const params = [];
-    for (let i = 0; i < 6; i++) {
-      params.push(startDate, endDate);
-    }
+    const expensesSql = `
+      SELECT COALESCE(category, 'Genel Gider') as category, SUM(amount) as total_amount
+      FROM expenses
+      WHERE date >= ? AND date <= ?
+      GROUP BY category
+      ORDER BY total_amount DESC
+    `;
 
-    const res = await db.get<{ payload: any }>(sql, params);
-    return res?.payload || {
-      tamirSales: 0,
-      teknikServisExpenses: 0,
-      kargoExpenses: 0,
-      emanetExpenses: 0,
-      sirketExpenses: 0,
-      toplamGider: 0
+    const salesList = await db.all<{ category: string, total_amount: number }>(salesSql, [startDate, endDate]);
+    const expensesList = await db.all<{ category: string, total_amount: number }>(expensesSql, [startDate, endDate]);
+
+    return {
+      salesList: salesList || [],
+      expensesList: expensesList || []
     };
   },
 
