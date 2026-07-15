@@ -1027,9 +1027,9 @@ export const dbService = {
             JOIN sales s ON si.sale_id = s.id
             WHERE s.date >= ? AND s.date <= ? AND p.type != 'Cihaz' AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
           ), 0),
-          'totalExpenses', COALESCE((
+           'totalExpenses', COALESCE((
             SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
+            WHERE date >= ? AND date <= ?
           ), 0),
           'netProfit', (
             COALESCE((
@@ -1048,7 +1048,7 @@ export const dbService = {
             ), 0) -
             COALESCE((
               SELECT SUM(amount) FROM expenses 
-              WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
+              WHERE date >= ? AND date <= ?
             ), 0)
           )
         ),

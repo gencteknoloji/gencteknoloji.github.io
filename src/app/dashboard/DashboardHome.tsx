@@ -2618,12 +2618,10 @@ export default function DashboardHome() {
                   const kSales = toNum(kontorSales) || 0;
                   const fPayments = toNum(faturaPayments) || 0;
                   const todayExpenses = expensesList
-                    .filter(e => e.date === todayStr && (!e.category || e.category === 'Genel Gider'))
+                    .filter(e => e.date === todayStr && e.category !== 'Şirket Giderleri')
                     .reduce((sum, e) => sum + (toNum(e.amount) || 0), 0);
 
-                  const todayOtherExits = expensesList
-                    .filter(e => e.date === todayStr && e.category && e.category !== 'Genel Gider' && e.category !== 'Şirket Giderleri')
-                    .reduce((sum, e) => sum + (toNum(e.amount) || 0), 0);
+                  const todayOtherExits = 0;
 
                   // Calculate metrics
                   const totalSalesCount = todaySales.length;
