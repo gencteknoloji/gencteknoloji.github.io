@@ -147,7 +147,7 @@ const ALL_TABS = [
   { key: 'turkcell_stock', label: 'Turkcell Cihaz Stok' },
   { key: 'cariler', label: 'Müşteri Hesaplar' },
   { key: 'debt', label: 'Müşteri Borç Takibi' },
-  { key: 'reports', label: 'Satış Analizi ve Geçmişi' },
+  { key: 'reports', label: 'Analiz' },
   { key: 'turkcell', label: 'Turkcell Prim' }
 ];
 
@@ -170,7 +170,7 @@ const SIDEBAR_GROUPS: { title: string; items: SidebarNavItem[]; accent?: 'turkce
   {
     title: 'Analiz & Rapor',
     items: [
-      { key: 'reports', label: 'Satış Analizi ve Geçmişi', icon: TrendingUp },
+      { key: 'reports', label: 'Analiz', icon: TrendingUp },
     ],
   },
   {
@@ -564,6 +564,12 @@ export default function DashboardHome() {
       cihazSales: number;
       totalExpenses: number;
       netProfit: number;
+      tamirSales?: number;
+      teknikServisExpenses?: number;
+      kargoExpenses?: number;
+      emanetExpenses?: number;
+      sirketExpenses?: number;
+      toplamGider?: number;
     };
     dates: any[];
   } | null>(null);
@@ -837,6 +843,9 @@ export default function DashboardHome() {
       } else if (reportFilterRange === 'this_month') {
         const limitDate = new Date(today.getFullYear(), today.getMonth(), 1);
         startDateStr = limitDate.toLocaleDateString('sv-SE');
+      } else if (reportFilterRange === 'general') {
+        startDateStr = '2000-01-01';
+        endDateStr = '2100-12-31';
       } else if (reportFilterRange === 'custom') {
         startDateStr = reportCustomStart;
         endDateStr = reportCustomEnd;
@@ -4835,7 +4844,7 @@ export default function DashboardHome() {
               <div className="animate-fade-in flex flex-col gap-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white mb-0.5 font-sans">Satış Analizi ve Geçmişi</h2>
+                    <h2 className="text-xl font-bold tracking-tight text-white mb-0.5 font-sans">Analiz</h2>
                     <p className="text-secondary text-xs">Seçilen döneme ait ciro, kârlılık oranları ve satış geçmişi listesi.</p>
                   </div>
                   
@@ -4853,6 +4862,7 @@ export default function DashboardHome() {
                         <option value="yesterday" className="bg-neutral-900 text-white">Dün</option>
                         <option value="7days" className="bg-neutral-900 text-white">Son 7 Gün</option>
                         <option value="this_month" className="bg-neutral-900 text-white">Bu Ay</option>
+                        <option value="general" className="bg-neutral-900 text-white">Genel Analiz</option>
                         <option value="custom" className="bg-neutral-900 text-white">Tarih Aralığı</option>
                       </select>
                     </div>
@@ -4918,6 +4928,71 @@ export default function DashboardHome() {
                           <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider block font-bold">Kar-Zarar</span>
                           <h3 className="text-lg font-extrabold text-emerald-400 mt-1 font-mono">{netProfit.toLocaleString('tr-TR')} TL</h3>
                           <span className="text-[9px] text-emerald-500/80">Net kâr (Cihaz + Aksesuar + Tamir Net − Genel Gider)</span>
+                        </div>
+                      </div>
+
+                      {/* Detaylı Gelir & Gider Dağılımı */}
+                      <div className="glass-panel p-5 bg-gradient-to-b from-slate-900/40 to-slate-950/20 border border-white/5 font-sans">
+                        <div className="flex items-center justify-between mb-4 pb-2.5 border-b border-white/5">
+                          <h4 className="font-bold text-white text-xs tracking-wide uppercase">Detaylı Gelir & Gider Dağılımı</h4>
+                          <span className="text-[10px] text-indigo-400 font-mono font-bold uppercase">Kategori Kırılımı</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          
+                          {/* Gelir Kırılımı */}
+                          <div className="flex flex-col gap-3">
+                            <h5 className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Gelir Kaynakları (Artılar)</h5>
+                            <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
+                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                <span>Cihaz Satış Geliri:</span>
+                                <span className="font-bold text-white font-mono">{cihazSales.toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                <span>Aksesuar Satış Geliri:</span>
+                                <span className="font-bold text-white font-mono">{aksesuarSales.toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-secondary pb-1">
+                                <span>Tamir / Teknik Servis Geliri:</span>
+                                <span className="font-bold text-white font-mono">{(summary.tamirSales || 0).toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs font-bold text-emerald-400 border-t border-white/10 pt-2 mt-1">
+                                <span>Toplam Brüt Gelir (Ciro):</span>
+                                <span className="font-mono">{totalSales.toLocaleString('tr-TR')} TL</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Gider Kırılımı */}
+                          <div className="flex flex-col gap-3">
+                            <h5 className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Gider ve Çıkışlar (Eksiler)</h5>
+                            <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
+                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                <span>Genel Giderler:</span>
+                                <span className="font-bold text-white font-mono">{totalExpenses.toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                <span>Teknik Servis Giderleri:</span>
+                                <span className="font-bold text-white font-mono">{(summary.teknikServisExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                <span>Kargo Giderleri:</span>
+                                <span className="font-bold text-white font-mono">{(summary.kargoExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                <span>Emanet Giderleri:</span>
+                                <span className="font-bold text-white font-mono">{(summary.emanetExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-secondary pb-1">
+                                <span>Şirket Giderleri (Kasa Harici):</span>
+                                <span className="font-bold text-white font-mono">{(summary.sirketExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs font-bold text-red-400 border-t border-white/10 pt-2 mt-1">
+                                <span>Toplam Brüt Gider (Tümü):</span>
+                                <span className="font-mono">{(summary.toplamGider || 0).toLocaleString('tr-TR')} TL</span>
+                              </div>
+                            </div>
+                          </div>
+
                         </div>
                       </div>
 
