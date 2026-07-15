@@ -42,6 +42,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  font-size: 108%; /* Globally scales up UI elements and text slightly */
 }
 
 /* Base body overrides */
