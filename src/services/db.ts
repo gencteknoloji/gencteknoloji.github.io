@@ -1044,34 +1044,6 @@ export const dbService = {
             SELECT SUM(amount) FROM expenses 
             WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
           ), 0),
-          'tamirSales', COALESCE((
-            SELECT SUM(si.price * si.quantity) 
-            FROM sale_items si 
-            JOIN products p ON si.product_id = p.id
-            JOIN sales s ON si.sale_id = s.id
-            WHERE s.date >= ? AND s.date <= ? 
-              AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
-          ), 0),
-          'teknikServisExpenses', COALESCE((
-            SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ? AND category = 'Teknik Servis'
-          ), 0),
-          'kargoExpenses', COALESCE((
-            SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ? AND category = 'Kargo'
-          ), 0),
-          'emanetExpenses', COALESCE((
-            SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ? AND category = 'Emanet'
-          ), 0),
-          'sirketExpenses', COALESCE((
-            SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ? AND category = 'Şirket Giderleri'
-          ), 0),
-          'toplamGider', COALESCE((
-            SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ?
-          ), 0),
           'netProfit', (
             /* 1. Cihaz Kârı */
             COALESCE((
@@ -1129,7 +1101,7 @@ export const dbService = {
     `;
 
     const params = [];
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 10; i++) {
       params.push(startDate, endDate);
     }
 
@@ -1137,6 +1109,56 @@ export const dbService = {
     return res?.payload || {
       summary: { totalSales: 0, aksesuarSales: 0, cihazSales: 0, totalExpenses: 0, netProfit: 0 },
       dates: []
+    };
+  },
+
+  async getAnalysisBreakdown(startDate: string, endDate: string): Promise<any> {
+    const sql = `
+      SELECT json_build_object(
+        'tamirSales', COALESCE((
+          SELECT SUM(si.price * si.quantity) 
+          FROM sale_items si 
+          JOIN products p ON si.product_id = p.id
+          JOIN sales s ON si.sale_id = s.id
+          WHERE s.date >= ? AND s.date <= ? 
+            AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
+        ), 0),
+        'teknikServisExpenses', COALESCE((
+          SELECT SUM(amount) FROM expenses 
+          WHERE date >= ? AND date <= ? AND category = 'Teknik Servis'
+        ), 0),
+        'kargoExpenses', COALESCE((
+          SELECT SUM(amount) FROM expenses 
+          WHERE date >= ? AND date <= ? AND category = 'Kargo'
+        ), 0),
+        'emanetExpenses', COALESCE((
+          SELECT SUM(amount) FROM expenses 
+          WHERE date >= ? AND date <= ? AND category = 'Emanet'
+        ), 0),
+        'sirketExpenses', COALESCE((
+          SELECT SUM(amount) FROM expenses 
+          WHERE date >= ? AND date <= ? AND category = 'Şirket Giderleri'
+        ), 0),
+        'toplamGider', COALESCE((
+          SELECT SUM(amount) FROM expenses 
+          WHERE date >= ? AND date <= ?
+        ), 0)
+      ) as payload
+    `;
+
+    const params = [];
+    for (let i = 0; i < 6; i++) {
+      params.push(startDate, endDate);
+    }
+
+    const res = await db.get<{ payload: any }>(sql, params);
+    return res?.payload || {
+      tamirSales: 0,
+      teknikServisExpenses: 0,
+      kargoExpenses: 0,
+      emanetExpenses: 0,
+      sirketExpenses: 0,
+      toplamGider: 0
     };
   },
 

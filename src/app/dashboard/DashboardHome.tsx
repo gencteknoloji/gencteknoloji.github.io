@@ -564,16 +564,22 @@ export default function DashboardHome() {
       cihazSales: number;
       totalExpenses: number;
       netProfit: number;
-      tamirSales?: number;
-      teknikServisExpenses?: number;
-      kargoExpenses?: number;
-      emanetExpenses?: number;
-      sirketExpenses?: number;
-      toplamGider?: number;
     };
     dates: any[];
   } | null>(null);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+
+  // Breakdown states for accordion (lazy loaded)
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [breakdownData, setBreakdownData] = useState<{
+    tamirSales: number;
+    teknikServisExpenses: number;
+    kargoExpenses: number;
+    emanetExpenses: number;
+    sirketExpenses: number;
+    toplamGider: number;
+  } | null>(null);
+  const [isBreakdownLoading, setIsBreakdownLoading] = useState(false);
   const [dateSales, setDateSales] = useState<Record<string, any[]>>({});
   const [dateSalesLoading, setDateSalesLoading] = useState<Record<string, boolean>>({});
   const [pageReportDates, setPageReportDates] = useState(1);
@@ -868,6 +874,42 @@ export default function DashboardHome() {
     }
   };
 
+  const loadBreakdownData = async () => {
+    setIsBreakdownLoading(true);
+    try {
+      const today = new Date();
+      let startDateStr = today.toLocaleDateString('sv-SE');
+      let endDateStr = today.toLocaleDateString('sv-SE');
+
+      if (reportFilterRange === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        startDateStr = yesterday.toLocaleDateString('sv-SE');
+        endDateStr = yesterday.toLocaleDateString('sv-SE');
+      } else if (reportFilterRange === '7days') {
+        const limitDate = new Date();
+        limitDate.setDate(today.getDate() - 7);
+        startDateStr = limitDate.toLocaleDateString('sv-SE');
+      } else if (reportFilterRange === 'this_month') {
+        const limitDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        startDateStr = limitDate.toLocaleDateString('sv-SE');
+      } else if (reportFilterRange === 'general') {
+        startDateStr = '2000-01-01';
+        endDateStr = '2100-12-31';
+      } else if (reportFilterRange === 'custom') {
+        startDateStr = reportCustomStart;
+        endDateStr = reportCustomEnd;
+      }
+
+      const data = await dbService.getAnalysisBreakdown(startDateStr, endDateStr);
+      setBreakdownData(data);
+    } catch (err) {
+      console.error("Load breakdown error:", err);
+    } finally {
+      setIsBreakdownLoading(false);
+    }
+  };
+
   const toggleDateExpand = async (dateStr: string) => {
     const isCurrentlyExpanded = expandedDates[dateStr] ?? false;
     const newExpandedState = !isCurrentlyExpanded;
@@ -894,6 +936,8 @@ export default function DashboardHome() {
     setPageReportDates(1);
     setExpandedDates({});
     setDateSales({});
+    setBreakdownData(null);
+    setShowBreakdown(false);
   }, [reportFilterRange, reportCustomStart, reportCustomEnd]);
 
   useEffect(() => {
@@ -4931,69 +4975,113 @@ export default function DashboardHome() {
                         </div>
                       </div>
 
-                      {/* Detaylı Gelir & Gider Dağılımı */}
-                      <div className="glass-panel p-5 bg-gradient-to-b from-slate-900/40 to-slate-950/20 border border-white/5 font-sans">
-                        <div className="flex items-center justify-between mb-4 pb-2.5 border-b border-white/5">
-                          <h4 className="font-bold text-white text-xs tracking-wide uppercase">Detaylı Gelir & Gider Dağılımı</h4>
-                          <span className="text-[10px] text-indigo-400 font-mono font-bold uppercase">Kategori Kırılımı</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          
-                          {/* Gelir Kırılımı */}
-                          <div className="flex flex-col gap-3">
-                            <h5 className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Gelir Kaynakları (Artılar)</h5>
-                            <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
-                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                <span>Cihaz Satış Geliri:</span>
-                                <span className="font-bold text-white font-mono">{cihazSales.toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                <span>Aksesuar Satış Geliri:</span>
-                                <span className="font-bold text-white font-mono">{aksesuarSales.toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs text-secondary pb-1">
-                                <span>Tamir / Teknik Servis Geliri:</span>
-                                <span className="font-bold text-white font-mono">{(summary.tamirSales || 0).toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs font-bold text-emerald-400 border-t border-white/10 pt-2 mt-1">
-                                <span>Toplam Brüt Gelir (Ciro):</span>
-                                <span className="font-mono">{totalSales.toLocaleString('tr-TR')} TL</span>
-                              </div>
-                            </div>
+                      {/* Detaylı Gelir & Gider Dağılımı Accordion */}
+                      <div className="glass-panel border border-white/5 font-sans overflow-hidden">
+                        {/* Header Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newShow = !showBreakdown;
+                            setShowBreakdown(newShow);
+                            if (newShow && !breakdownData) {
+                              loadBreakdownData();
+                            }
+                          }}
+                          className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-slate-900/40 to-slate-950/20 hover:bg-slate-800/10 transition-colors cursor-pointer text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[10px] text-indigo-400 font-mono font-bold uppercase bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/15">
+                              Kategori Kırılımı
+                            </span>
+                            <h4 className="font-bold text-white text-xs tracking-wide uppercase">Detaylı Gelir & Gider Dağılımı</h4>
                           </div>
-
-                          {/* Gider Kırılımı */}
-                          <div className="flex flex-col gap-3">
-                            <h5 className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Gider ve Çıkışlar (Eksiler)</h5>
-                            <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
-                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                <span>Genel Giderler:</span>
-                                <span className="font-bold text-white font-mono">{totalExpenses.toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                <span>Teknik Servis Giderleri:</span>
-                                <span className="font-bold text-white font-mono">{(summary.teknikServisExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                <span>Kargo Giderleri:</span>
-                                <span className="font-bold text-white font-mono">{(summary.kargoExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
-                                <span>Emanet Giderleri:</span>
-                                <span className="font-bold text-white font-mono">{(summary.emanetExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs text-secondary pb-1">
-                                <span>Şirket Giderleri (Kasa Harici):</span>
-                                <span className="font-bold text-white font-mono">{(summary.sirketExpenses || 0).toLocaleString('tr-TR')} TL</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs font-bold text-red-400 border-t border-white/10 pt-2 mt-1">
-                                <span>Toplam Brüt Gider (Tümü):</span>
-                                <span className="font-mono">{(summary.toplamGider || 0).toLocaleString('tr-TR')} TL</span>
-                              </div>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            {isBreakdownLoading && (
+                              <span className="text-[10px] text-indigo-400 animate-pulse">Hesaplanıyor...</span>
+                            )}
+                            <svg
+                              className={`w-4 h-4 text-secondary transition-transform duration-200 ${showBreakdown ? 'rotate-180' : ''}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
                           </div>
+                        </button>
 
-                        </div>
+                        {/* Accordion Content */}
+                        {showBreakdown && (
+                          <div className="p-5 border-t border-white/5 bg-slate-950/10 animate-fade-in">
+                            {isBreakdownLoading ? (
+                              <div className="text-center py-6 text-xs text-secondary animate-pulse">
+                                Veritabanı sorguları çalıştırılıyor ve hesaplanıyor...
+                              </div>
+                            ) : !breakdownData ? (
+                              <div className="text-center py-6 text-xs text-secondary">
+                                Kırılım verileri yüklenemedi. Tekrar denemek için başlığa tıklayın.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                
+                                {/* Gelir Kırılımı */}
+                                <div className="flex flex-col gap-3">
+                                  <h5 className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Gelir Kaynakları (Artılar)</h5>
+                                  <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
+                                    <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                      <span>Cihaz Satış Geliri:</span>
+                                      <span className="font-bold text-white font-mono">{cihazSales.toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                      <span>Aksesuar Satış Geliri:</span>
+                                      <span className="font-bold text-white font-mono">{aksesuarSales.toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-secondary pb-1">
+                                      <span>Tamir / Teknik Servis Geliri:</span>
+                                      <span className="font-bold text-white font-mono">{(breakdownData.tamirSales || 0).toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs font-bold text-emerald-400 border-t border-white/10 pt-2 mt-1">
+                                      <span>Toplam Gelir (Ciro):</span>
+                                      <span className="font-mono">{totalSales.toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Gider Kırılımı */}
+                                <div className="flex flex-col gap-3">
+                                  <h5 className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Gider ve Çıkışlar (Eksiler)</h5>
+                                  <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
+                                    <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                      <span>Genel Giderler:</span>
+                                      <span className="font-bold text-white font-mono">{totalExpenses.toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                      <span>Teknik Servis Giderleri:</span>
+                                      <span className="font-bold text-white font-mono">{(breakdownData.teknikServisExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                      <span>Kargo Giderleri:</span>
+                                      <span className="font-bold text-white font-mono">{(breakdownData.kargoExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2">
+                                      <span>Emanet Giderleri:</span>
+                                      <span className="font-bold text-white font-mono">{(breakdownData.emanetExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-secondary pb-1">
+                                      <span>Şirket Giderleri (Kasa Harici):</span>
+                                      <span className="font-bold text-white font-mono">{(breakdownData.sirketExpenses || 0).toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs font-bold text-red-400 border-t border-white/10 pt-2 mt-1">
+                                      <span>Toplam Brüt Gider (Tümü):</span>
+                                      <span className="font-mono">{(breakdownData.toplamGider || 0).toLocaleString('tr-TR')} TL</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Period Sales History Section */}
