@@ -2195,23 +2195,19 @@ export default function DashboardHome() {
                             value={manualItem.name}
                             onChange={(e) => {
                               setManualItem({ ...manualItem, name: e.target.value });
+                              setProductSearch(e.target.value);
                               setSelectedProductIdForManual('manual');
                               setShowAutocomplete(true);
                             }}
-                            onFocus={() => setShowAutocomplete(true)}
-                            onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
+                            onFocus={() => {
+                              setProductSearch(manualItem.name);
+                              setShowAutocomplete(true);
+                            }}
+                            onBlur={() => setTimeout(() => setShowAutocomplete(false), 250)}
                           />
 
                           {(() => {
-                            const matches = products.filter(p => {
-                              if (!manualItem.name || selectedProductIdForManual !== 'manual') return false;
-                              const queryNorm = normalizeString(manualItem.name);
-                              return (
-                                (p.name && normalizeString(p.name).includes(queryNorm)) ||
-                                (p.barcode && normalizeString(p.barcode).includes(queryNorm)) ||
-                                (p.imei && normalizeString(p.imei).includes(queryNorm))
-                              );
-                            });
+                            const matches = checkoutProductDropdown;
 
                             return showAutocomplete && manualItem.name && matches.length > 0 && (
                               <div className="absolute left-0 right-0 mt-1 z-50 border border-white/5 rounded-lg p-2 bg-neutral-950/95 shadow-xl max-h-80 overflow-y-auto">
