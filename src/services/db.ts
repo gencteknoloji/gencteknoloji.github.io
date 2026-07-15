@@ -1029,7 +1029,7 @@ export const dbService = {
           ), 0),
            'totalExpenses', COALESCE((
             SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ?
+            WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
           ), 0),
           'netProfit', (
             COALESCE((
@@ -1048,7 +1048,7 @@ export const dbService = {
             ), 0) -
             COALESCE((
               SELECT SUM(amount) FROM expenses 
-              WHERE date >= ? AND date <= ?
+              WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
             ), 0)
           )
         ),
