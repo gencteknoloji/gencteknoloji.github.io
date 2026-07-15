@@ -5085,7 +5085,8 @@ export default function DashboardHome() {
                                 {/* Genel Kar-Zarar Bölümü */}
                                 {(() => {
                                   const totalGider = breakdownData.expensesList.reduce((sum: number, it: any) => sum + it.total_amount, 0);
-                                  const genelNetKar = totalSales - totalGider;
+                                  const totalBrutKar = breakdownData.salesList.reduce((sum: number, it: any) => sum + (it.total_profit ?? 0), 0);
+                                  const genelNetKar = totalBrutKar - totalGider;
                                   const isPositive = genelNetKar >= 0;
                                   return (
                                     <div className={`glass-panel p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
@@ -5098,12 +5099,17 @@ export default function DashboardHome() {
                                           Genel Kar - Zarar
                                         </h5>
                                         <span className="text-[10px] text-secondary">
-                                          Tüm kategoriler dahil net genel durum (Toplam Gelir − Tüm Giderler)
+                                          Brüt Kâr (Satış − Alış Maliyeti) − Tüm Giderler
                                         </span>
                                       </div>
-                                      <h3 className={`text-xl font-black font-mono ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {isPositive ? '+' : ''}{genelNetKar.toLocaleString('tr-TR')} TL
-                                      </h3>
+                                      <div className="flex flex-col items-end gap-0.5">
+                                        <h3 className={`text-xl font-black font-mono ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                                          {isPositive ? '+' : ''}{genelNetKar.toLocaleString('tr-TR')} TL
+                                        </h3>
+                                        <span className="text-[10px] text-secondary font-mono">
+                                          Brüt Kâr: {totalBrutKar >= 0 ? '+' : ''}{totalBrutKar.toLocaleString('tr-TR')} TL &nbsp;|&nbsp; Gider: -{totalGider.toLocaleString('tr-TR')} TL
+                                        </span>
+                                      </div>
                                     </div>
                                   );
                                 })()}
