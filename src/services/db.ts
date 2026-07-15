@@ -1085,6 +1085,11 @@ export const dbService = {
             COALESCE((
               SELECT SUM(amount) FROM expenses 
               WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
+            ), 0) -
+            /* 5. Şirket Giderleri */
+            COALESCE((
+              SELECT SUM(amount) FROM expenses 
+              WHERE date >= ? AND date <= ? AND category = 'Şirket Giderleri'
             ), 0)
           )
         ),
@@ -1101,7 +1106,7 @@ export const dbService = {
     `;
 
     const params = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 11; i++) {
       params.push(startDate, endDate);
     }
 
