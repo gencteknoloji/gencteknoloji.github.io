@@ -143,12 +143,11 @@ const ALL_TABS = [
   { key: 'sales', label: 'Satış Kasa' },
   { key: 'gun_sonu', label: 'Gün Sonu' },
   { key: 'dashboard', label: 'Dashboard' },
-  { key: 'history', label: 'Satış Geçmişi' },
   { key: 'products', label: 'Stok Kartları' },
   { key: 'turkcell_stock', label: 'Turkcell Cihaz Stok' },
   { key: 'cariler', label: 'Müşteri Hesaplar' },
   { key: 'debt', label: 'Müşteri Borç Takibi' },
-  { key: 'reports', label: 'Satış Analizi' },
+  { key: 'reports', label: 'Satış Analizi ve Geçmişi' },
   { key: 'turkcell', label: 'Turkcell Prim' }
 ];
 
@@ -171,8 +170,7 @@ const SIDEBAR_GROUPS: { title: string; items: SidebarNavItem[]; accent?: 'turkce
   {
     title: 'Analiz & Rapor',
     items: [
-      { key: 'reports', label: 'Satış Analizi', icon: TrendingUp },
-      { key: 'history', label: 'Satış Geçmişi', icon: ArrowRightLeft },
+      { key: 'reports', label: 'Satış Analizi ve Geçmişi', icon: TrendingUp },
     ],
   },
   {
@@ -499,6 +497,10 @@ export default function DashboardHome() {
     totalExpenses: 0,
     totalCihazProfit: 0,
     totalAksesuarProfit: 0,
+    totalDeviceStockCost: 0,
+    totalDeviceStockSale: 0,
+    deviceCount: 0,
+    totalAccessoryStockCost: 0
   });
   const [weeklyChart, setWeeklyChart] = useState<ChartPoint[]>([]);
   const [monthlyChart, setMonthlyChart] = useState<ChartPoint[]>([]);
@@ -533,6 +535,39 @@ export default function DashboardHome() {
   const [physicalCard, setPhysicalCard] = useState('');
   const [kontorSales, setKontorSales] = useState('');
   const [faturaPayments, setFaturaPayments] = useState('');
+
+  // Dynamic Folder Stock State
+  const [loadedCategories, setLoadedCategories] = useState<Record<string, boolean>>({});
+  const [folderProducts, setFolderProducts] = useState<Record<string, Product[]>>({
+    device: [],
+    kilif: [],
+    cam: [],
+    sarj: [],
+    kulaklik: [],
+    diger: []
+  });
+  const [folderLoading, setFolderLoading] = useState<Record<string, boolean>>({});
+  
+  // Checkout & Search States
+  const [checkoutProducts, setCheckoutProducts] = useState<Product[]>([]);
+  const [searchProductsList, setSearchProductsList] = useState<Product[]>([]);
+  const [isSearchingProducts, setIsSearchingProducts] = useState(false);
+
+  // Unified Reports State
+  const [reportFilterRange, setReportFilterRange] = useState('today');
+  const [reportCustomStart, setReportCustomStart] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [reportCustomEnd, setReportCustomEnd] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [analysisData, setAnalysisData] = useState<{
+    summary: {
+      totalSales: number;
+      aksesuarSales: number;
+      cihazSales: number;
+      totalExpenses: number;
+      netProfit: number;
+    };
+    sales: any[];
+  } | null>(null);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
 
   const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
@@ -642,6 +677,20 @@ export default function DashboardHome() {
   const loadAllData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
+      
+      // Clear folder caches on manual action to force reload
+      if (!silent) {
+        setLoadedCategories({});
+      } else {
+        // Silently refresh open folders
+        const activeFolders = Object.keys(loadedCategories).filter(k => loadedCategories[k]) as ('device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'diger')[];
+        for (const folderKey of activeFolders) {
+          dbService.getProductsByFolder(folderKey).then(data => {
+            setFolderProducts(prev => ({ ...prev, [folderKey]: data }));
+          }).catch(err => console.error("Background folder refresh error:", err));
+        }
+      }
+
       const initData = await dbService.getInitialData();
 
       const itemsBySaleId: Record<string, any[]> = {};
@@ -673,6 +722,133 @@ export default function DashboardHome() {
       if (!silent) setLoading(false);
     }
   };
+
+  // Dynamic Folder Stock Loader
+  const loadFolderProducts = async (folderKey: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'diger') => {
+    setFolderLoading(prev => ({ ...prev, [folderKey]: true }));
+    try {
+      const data = await dbService.getProductsByFolder(folderKey);
+      setFolderProducts(prev => ({ ...prev, [folderKey]: data }));
+      setLoadedCategories(prev => ({ ...prev, [folderKey]: true }));
+    } catch (err) {
+      console.error(`Folder load error (${folderKey}):`, err);
+    } finally {
+      setFolderLoading(prev => ({ ...prev, [folderKey]: false }));
+    }
+  };
+
+  useEffect(() => {
+    if (deviceFolderOpen && !loadedCategories['device']) {
+      loadFolderProducts('device');
+    }
+  }, [deviceFolderOpen]);
+
+  useEffect(() => {
+    if (kiliffFolderOpen && !loadedCategories['kilif']) {
+      loadFolderProducts('kilif');
+    }
+  }, [kiliffFolderOpen]);
+
+  useEffect(() => {
+    if (camFolderOpen && !loadedCategories['cam']) {
+      loadFolderProducts('cam');
+    }
+  }, [camFolderOpen]);
+
+  useEffect(() => {
+    if (sarjFolderOpen && !loadedCategories['sarj']) {
+      loadFolderProducts('sarj');
+    }
+  }, [sarjFolderOpen]);
+
+  useEffect(() => {
+    if (kulaklikFolderOpen && !loadedCategories['kulaklik']) {
+      loadFolderProducts('kulaklik');
+    }
+  }, [kulaklikFolderOpen]);
+
+  useEffect(() => {
+    if (digerFolderOpen && !loadedCategories['diger']) {
+      loadFolderProducts('diger');
+    }
+  }, [digerFolderOpen]);
+
+  // Debounced Product Search for Stok Tab
+  useEffect(() => {
+    if (!globalProductSearch.trim()) {
+      setSearchProductsList([]);
+      return;
+    }
+    setIsSearchingProducts(true);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const results = await dbService.searchProducts(globalProductSearch);
+        setSearchProductsList(results);
+      } catch (err) {
+        console.error("Global product search error:", err);
+      } finally {
+        setIsSearchingProducts(false);
+      }
+    }, 300);
+    return () => clearTimeout(delayDebounce);
+  }, [globalProductSearch]);
+
+  // Debounced Product Search for Checkout Dropdown
+  useEffect(() => {
+    if (!productSearch.trim()) {
+      setCheckoutProducts([]);
+      return;
+    }
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const results = await dbService.searchProducts(productSearch);
+        setCheckoutProducts(results);
+      } catch (err) {
+        console.error("Checkout product search error:", err);
+      }
+    }, 200);
+    return () => clearTimeout(delayDebounce);
+  }, [productSearch]);
+
+  // Unified Sales Analysis Data Loader
+  const loadAnalysisData = async () => {
+    if (activeTab !== 'reports') return;
+    setIsAnalysisLoading(true);
+    try {
+      const today = new Date();
+      let startDateStr = today.toLocaleDateString('sv-SE');
+      let endDateStr = today.toLocaleDateString('sv-SE');
+
+      if (reportFilterRange === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        startDateStr = yesterday.toLocaleDateString('sv-SE');
+        endDateStr = yesterday.toLocaleDateString('sv-SE');
+      } else if (reportFilterRange === '7days') {
+        const limitDate = new Date();
+        limitDate.setDate(today.getDate() - 7);
+        startDateStr = limitDate.toLocaleDateString('sv-SE');
+      } else if (reportFilterRange === '30days') {
+        const limitDate = new Date();
+        limitDate.setDate(today.getDate() - 30);
+        startDateStr = limitDate.toLocaleDateString('sv-SE');
+      } else if (reportFilterRange === 'custom') {
+        startDateStr = reportCustomStart;
+        endDateStr = reportCustomEnd;
+      }
+
+      const data = await dbService.getSalesAnalysis(startDateStr, endDateStr);
+      setAnalysisData(data);
+    } catch (err) {
+      console.error("Load analysis error:", err);
+    } finally {
+      setIsAnalysisLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAnalysisData();
+  }, [activeTab, reportFilterRange, reportCustomStart, reportCustomEnd]);
 
   useEffect(() => {
     const checkAuthAndLoad = async () => {
@@ -1666,16 +1842,7 @@ export default function DashboardHome() {
   });
 
   // Filter products for Kasa checkout search dropdown
-  const checkoutProductDropdown = products.filter(p => {
-    const queryNorm = normalizeString(productSearch);
-    return (
-      queryNorm && (
-        (p.name && normalizeString(p.name).includes(queryNorm)) ||
-        (p.barcode && normalizeString(p.barcode).includes(queryNorm)) ||
-        (p.imei && normalizeString(p.imei).includes(queryNorm))
-      )
-    );
-  });
+  const checkoutProductDropdown = checkoutProducts;
 
   if (authLoading) {
     return <LoadingScreen variant="auth" />;
@@ -3125,13 +3292,10 @@ export default function DashboardHome() {
 
                 {/* Summary Cards */}
                 {(() => {
-                  const devices = products.filter(p => p.type === 'Cihaz');
-                  const totalDeviceStockCost = devices.reduce((sum, p) => sum + (p.purchase_price * (p.stock || 1)), 0);
-                  const totalDeviceStockSale = devices.reduce((sum, p) => sum + (p.sale_price * (p.stock || 1)), 0);
-                  const deviceCount = devices.reduce((sum, p) => sum + (p.stock || 1), 0);
-
-                  const accessories = products.filter(p => p.type !== 'Cihaz');
-                  const totalAccessoryStockCost = accessories.reduce((sum, p) => sum + (p.purchase_price * (p.stock || 0)), 0);
+                  const totalDeviceStockCost = metrics.totalDeviceStockCost || 0;
+                  const totalDeviceStockSale = metrics.totalDeviceStockSale || 0;
+                  const deviceCount = metrics.deviceCount || 0;
+                  const totalAccessoryStockCost = metrics.totalAccessoryStockCost || 0;
 
                   return (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
@@ -3371,20 +3535,22 @@ export default function DashboardHome() {
                   </div>
                 )}
 
-                {/* Per-category collapsible folders */}
+                {/* Per-category collapsible folders / Search Results */}
                 {(() => {
-                  // --- Category groupings ---
-                  const deviceProducts   = filteredProducts.filter(p => p.type === 'Cihaz' || p.category === 'Tablet' || p.category === 'Telefon');
-                  const kiliffProducts   = filteredProducts.filter(p => p.category === 'Telefon Kılıfı');
-                  const camProducts      = filteredProducts.filter(p => p.category === 'Telefon Kırılmaz Camı');
-                  const sarjProducts     = filteredProducts.filter(p => p.category === 'Şarj Cihazı' || p.category === 'Şarj Kablosu');
-                  const kulaklikProducts = filteredProducts.filter(p => p.category === 'Bluetooth Kulaklık');
-                  const digerProducts    = filteredProducts.filter(p =>
-                    p.type !== 'Cihaz' &&
-                    !['Tablet','Telefon','Telefon Kılıfı','Telefon Kırılmaz Camı','Şarj Cihazı','Şarj Kablosu','Bluetooth Kulaklık'].includes(p.category)
+                  const renderTableHeaders = () => (
+                    <thead>
+                      <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
+                        <th className="p-3">Kategori</th>
+                        <th className="p-3">Ürün Adı / Model</th>
+                        <th className="p-3 text-center">Stok</th>
+                        <th className="p-3 text-right">Alış Fiyatı</th>
+                        <th className="p-3 text-right">Satış Fiyatı</th>
+                        <th className="p-3 text-center">KDV</th>
+                        <th className="p-3 text-right">İşlem</th>
+                      </tr>
+                    </thead>
                   );
 
-                  // --- Reusable table renderer ---
                   const renderRow = (prod) => (
                     <tr key={prod.id} className="hover:bg-white/1 transition-colors">
                       <td className="p-3 whitespace-nowrap">
@@ -3442,19 +3608,29 @@ export default function DashboardHome() {
                     </tr>
                   );
 
-                  const renderTableHeaders = () => (
-                    <thead>
-                      <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
-                        <th className="p-3">Kategori</th>
-                        <th className="p-3">Ürün Adı / Model</th>
-                        <th className="p-3 text-center">Stok</th>
-                        <th className="p-3 text-right">Alış Fiyatı</th>
-                        <th className="p-3 text-right">Satış Fiyatı</th>
-                        <th className="p-3 text-center">KDV</th>
-                        <th className="p-3 text-right">İşlem</th>
-                      </tr>
-                    </thead>
-                  );
+                  // If searching, show flat list of search results
+                  if (globalProductSearch.trim() !== '') {
+                    if (isSearchingProducts) {
+                      return <div className="glass-panel p-8 text-center text-secondary text-xs">Aranıyor...</div>;
+                    }
+                    if (searchProductsList.length === 0) {
+                      return (
+                        <div className="glass-panel p-8 text-center text-secondary text-xs">
+                          Aramanıza uygun ürün kartı bulunamadı.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="glass-panel overflow-x-auto shadow-lg border border-white/5">
+                        <table className="w-full text-left text-xs border-collapse">
+                          {renderTableHeaders()}
+                          <tbody className="divide-y divide-white/5">
+                            {searchProductsList.map(renderRow)}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  }
 
                   const folderStyles = {
                     indigo: {
@@ -3495,9 +3671,12 @@ export default function DashboardHome() {
                     },
                   };
 
-                  const renderFolder = ({ title, products, isOpen, setOpen, color, emptyMsg, page, setPage }) => {
+                  const renderFolder = ({ folderKey, title, products, isOpen, setOpen, color, emptyMsg, page, setPage }) => {
                     const s = folderStyles[color];
+                    const isLoading = folderLoading[folderKey];
+                    const isLoaded = loadedCategories[folderKey];
                     const slicedProducts = products.slice((page - 1) * 10, page * 10);
+                    
                     return (
                       <div className={s.wrapper}>
                         <button onClick={() => setOpen(!isOpen)} className={s.btn}>
@@ -3507,16 +3686,19 @@ export default function DashboardHome() {
                             </div>
                             <div className="text-left">
                               <h3 className="font-bold text-white text-xs">{title}</h3>
-                              <span className={s.count}>{products.length} adet kayıtlı</span>
+                              <span className={s.count}>{isLoaded ? `${products.length} adet` : 'Yüklemek için tıklayın'}</span>
                             </div>
                           </div>
-                          <div className="text-secondary">
+                          <div className="text-secondary flex items-center gap-2">
+                            {isLoading && <span className="animate-spin text-indigo-400 text-[10px]">⌛</span>}
                             {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                           </div>
                         </button>
                         {isOpen && (
                           <div className="animate-fade-in overflow-x-auto">
-                            {products.length === 0 ? (
+                            {isLoading ? (
+                              <div className="text-center py-6 text-secondary text-xs">Veriler yükleniyor...</div>
+                            ) : products.length === 0 ? (
                               <div className="text-center py-4 text-secondary text-xs">{emptyMsg}</div>
                             ) : (
                               <>
@@ -3535,73 +3717,71 @@ export default function DashboardHome() {
                     );
                   };
 
-                  if (filteredProducts.length === 0) {
-                    return (
-                      <div className="glass-panel p-8 text-center text-secondary text-xs">
-                        Envanterde aramanıza uygun ürün kartı bulunamadı.
-                      </div>
-                    );
-                  }
-
                   return (
                     <div className="flex flex-col gap-4 w-full">
                       {renderFolder({
+                        folderKey: 'device',
                         title: 'Cihazlar / Telefonlar / Tabletler',
-                        products: deviceProducts,
+                        products: folderProducts.device,
                         isOpen: deviceFolderOpen,
                         setOpen: setDeviceFolderOpen,
                         color: 'indigo',
-                        emptyMsg: 'Bu klasörde aramanıza uygun cihaz bulunmamaktadır.',
+                        emptyMsg: 'Bu klasörde cihaz bulunmamaktadır.',
                         page: pageProdDevice,
                         setPage: setPageProdDevice
                       })}
                       {renderFolder({
+                        folderKey: 'kilif',
                         title: 'Telefon Kılıfları',
-                        products: kiliffProducts,
+                        products: folderProducts.kilif,
                         isOpen: kiliffFolderOpen,
                         setOpen: setKiliffFolderOpen,
                         color: 'emerald',
-                        emptyMsg: 'Bu klasörde aramanıza uygun kılıf bulunmamaktadır.',
+                        emptyMsg: 'Bu klasörde kılıf bulunmamaktadır.',
                         page: pageProdKilif,
                         setPage: setPageProdKilif
                       })}
                       {renderFolder({
+                        folderKey: 'cam',
                         title: 'Telefon Kırılmaz Camları',
-                        products: camProducts,
+                        products: folderProducts.cam,
                         isOpen: camFolderOpen,
                         setOpen: setCamFolderOpen,
                         color: 'sky',
-                        emptyMsg: 'Bu klasörde aramanıza uygun cam bulunmamaktadır.',
+                        emptyMsg: 'Bu klasörde cam bulunmamaktadır.',
                         page: pageProdCam,
                         setPage: setPageProdCam
                       })}
                       {renderFolder({
+                        folderKey: 'sarj',
                         title: 'Şarj Cihazları ve Kablolar',
-                        products: sarjProducts,
+                        products: folderProducts.sarj,
                         isOpen: sarjFolderOpen,
                         setOpen: setSarjFolderOpen,
                         color: 'amber',
-                        emptyMsg: 'Bu klasörde aramanıza uygun şarj ürünü bulunmamaktadır.',
+                        emptyMsg: 'Bu klasörde şarj ürünü bulunmamaktadır.',
                         page: pageProdSarj,
                         setPage: setPageProdSarj
                       })}
                       {renderFolder({
+                        folderKey: 'kulaklik',
                         title: 'Bluetooth Kulaklıklar',
-                        products: kulaklikProducts,
+                        products: folderProducts.kulaklik,
                         isOpen: kulaklikFolderOpen,
                         setOpen: setKulaklikFolderOpen,
                         color: 'purple',
-                        emptyMsg: 'Bu klasörde aramanıza uygun kulaklık bulunmamaktadır.',
+                        emptyMsg: 'Bu klasörde kulaklık bulunmamaktadır.',
                         page: pageProdKulaklik,
                         setPage: setPageProdKulaklik
                       })}
                       {renderFolder({
+                        folderKey: 'diger',
                         title: 'Diğer Ürünler',
-                        products: digerProducts,
+                        products: folderProducts.diger,
                         isOpen: digerFolderOpen,
                         setOpen: setDigerFolderOpen,
                         color: 'slate',
-                        emptyMsg: 'Bu klasörde aramanıza uygun ürün bulunmamaktadır.',
+                        emptyMsg: 'Bu klasörde ürün bulunmamaktadır.',
                         page: pageProdDiger,
                         setPage: setPageProdDiger
                       })}
@@ -4673,516 +4853,247 @@ export default function DashboardHome() {
               </div>
             )}
 
-                        {activeTab === 'reports' && (
+            {activeTab === 'reports' && (
               <div className="animate-fade-in flex flex-col gap-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white mb-0.5 font-sans">Satış Analizi</h2>
-                    <p className="text-secondary text-xs">Ciro, kârlılık oranları, haftalık/aylık grafik analizleri ve detaylı ürün raporları.</p>
+                    <h2 className="text-xl font-bold tracking-tight text-white mb-0.5 font-sans">Satış Analizi ve Geçmişi</h2>
+                    <p className="text-secondary text-xs">Seçilen döneme ait ciro, kârlılık oranları ve satış geçmişi listesi.</p>
                   </div>
                   
-                  {/* Sub-tab selection */}
-                  <div className="flex bg-white/5 border border-white/10 p-0.5 rounded-lg text-xs self-start sm:self-center">
-                    <button 
-                      onClick={() => setReportSubTab('analiz')}
-                      className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer ${reportSubTab === 'analiz' ? 'bg-indigo-600 text-white' : 'text-secondary hover:text-white'}`}
-                    >
-                      Analiz & Grafikler
-                    </button>
-                    <button 
-                      onClick={() => setReportSubTab('detay')}
-                      className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer ${reportSubTab === 'detay' ? 'bg-indigo-600 text-white' : 'text-secondary hover:text-white'}`}
-                    >
-                      Detaylı Ürün Raporları
-                    </button>
+                  {/* Period Filter Selection */}
+                  <div className="flex flex-wrap items-center gap-3 self-start sm:self-center">
+                    <div className="flex items-center gap-2 glass-panel px-3 py-1.5 border border-white/5">
+                      <span className="text-xs text-secondary font-medium">Dönem:</span>
+                      <select 
+                        value={reportFilterRange}
+                        onChange={(e) => setReportFilterRange(e.target.value)}
+                        className="bg-transparent border-0 text-white font-semibold text-xs focus:ring-0 cursor-pointer outline-none font-sans mr-2"
+                        style={{ colorScheme: 'dark' }}
+                      >
+                        <option value="today" className="bg-neutral-900 text-white">Bugün</option>
+                        <option value="yesterday" className="bg-neutral-900 text-white">Dün</option>
+                        <option value="7days" className="bg-neutral-900 text-white">Son 7 Gün</option>
+                        <option value="30days" className="bg-neutral-900 text-white">Son 30 Gün</option>
+                        <option value="custom" className="bg-neutral-900 text-white">Tarih Aralığı</option>
+                      </select>
+                    </div>
+
+                    {reportFilterRange === 'custom' && (
+                      <div className="flex items-center gap-2.5 glass-panel px-3.5 py-1.5 border border-white/5 animate-fade-in">
+                        <span className="text-xs text-secondary font-medium">Başlangıç:</span>
+                        <input 
+                          type="date" 
+                          className="bg-transparent border-0 text-white font-semibold text-xs focus:ring-0 cursor-pointer outline-none font-mono"
+                          value={reportCustomStart}
+                          onChange={(e) => setReportCustomStart(e.target.value)}
+                        />
+                        <span className="text-xs text-secondary font-medium">Bitiş:</span>
+                        <input 
+                          type="date" 
+                          className="bg-transparent border-0 text-white font-semibold text-xs focus:ring-0 cursor-pointer outline-none font-mono"
+                          value={reportCustomEnd}
+                          onChange={(e) => setReportCustomEnd(e.target.value)}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {reportSubTab === 'analiz' ? (
-                  <div className="animate-fade-in flex flex-col gap-5">
-                    {/* Metrics Cards */}
-                    <section className="metrics-grid">
-                      <div className="glass-panel metric-card">
-                        <div>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Bugünkü Satış</span>
-                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.todaySales.toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[10px] text-indigo-400">Aktif ciro</span>
+                {isAnalysisLoading ? (
+                  <div className="glass-panel p-12 text-center text-secondary text-xs">Veriler yükleniyor...</div>
+                ) : !analysisData ? (
+                  <div className="glass-panel p-12 text-center text-secondary text-xs">Seçilen döneme ait veri bulunamadı.</div>
+                ) : (() => {
+                  const { summary, sales: periodSales } = analysisData;
+                  const totalSales = summary.totalSales || 0;
+                  const aksesuarSales = summary.aksesuarSales || 0;
+                  const cihazSales = summary.cihazSales || 0;
+                  const netProfit = summary.netProfit || 0;
+                  const totalExpenses = summary.totalExpenses || 0;
+
+                  return (
+                    <div className="flex flex-col gap-6">
+                      {/* Summary Metrics Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 font-sans">
+                        <div className="glass-panel p-4 bg-gradient-to-br from-indigo-950/20 to-indigo-900/10 border border-white/5">
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Toplam Tüm Satış</span>
+                          <h3 className="text-lg font-extrabold text-white mt-1 font-mono">{totalSales.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[9px] text-secondary">Toplam ciro</span>
                         </div>
-                        <div className="metric-icon bg-indigo-500/10 text-indigo-400">
-                          <Coins size={20} />
+                        <div className="glass-panel p-4 bg-gradient-to-br from-violet-950/20 to-violet-900/10 border border-white/5">
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Aksesuar Satışı</span>
+                          <h3 className="text-lg font-extrabold text-violet-400 mt-1 font-mono">{aksesuarSales.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[9px] text-secondary">Aksesuar ciro</span>
+                        </div>
+                        <div className="glass-panel p-4 bg-gradient-to-br from-sky-950/20 to-sky-900/10 border border-white/5">
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Cihaz Satışı</span>
+                          <h3 className="text-lg font-extrabold text-sky-400 mt-1 font-mono">{cihazSales.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[9px] text-secondary">Cihaz ciro</span>
+                        </div>
+                        <div className="glass-panel p-4 bg-gradient-to-br from-red-950/20 to-red-900/10 border border-white/5">
+                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Gider</span>
+                          <h3 className="text-lg font-extrabold text-red-400 mt-1 font-mono">-{totalExpenses.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[9px] text-red-400/80">Genel giderler</span>
+                        </div>
+                        <div className="glass-panel p-4 bg-gradient-to-br from-emerald-950/20 to-emerald-900/10 border border-emerald-500/15">
+                          <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider block font-bold">Kar-Zarar</span>
+                          <h3 className="text-lg font-extrabold text-emerald-400 mt-1 font-mono">{netProfit.toLocaleString('tr-TR')} TL</h3>
+                          <span className="text-[9px] text-emerald-500/80">Net kâr (Cihaz+Aksesuar−Gider)</span>
                         </div>
                       </div>
 
-                      <div className="glass-panel metric-card">
-                        <div>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Bu Haftaki Satış</span>
-                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.weekSales.toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[10px] text-success">Son 7 gün</span>
-                        </div>
-                        <div className="metric-icon bg-success-glow text-success">
-                          <TrendingUp size={20} />
-                        </div>
-                      </div>
-
-                      <div className="glass-panel metric-card">
-                        <div>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider font-bold">Bu Ayki Toplam</span>
-                          <h3 className="text-xl font-extrabold text-white mt-1 font-mono">{metrics.monthSales.toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[10px] text-sky-400">Son 30 gün</span>
-                        </div>
-                        <div className="metric-icon bg-sky-500/10 text-sky-400">
-                          <Coins size={20} />
-                        </div>
-                      </div>
-
-                      <div className="glass-panel metric-card">
-                        <div>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Toplam Gider</span>
-                          <h3 className="text-xl font-extrabold text-red-400 mt-1 font-mono">{metrics.totalExpenses ? metrics.totalExpenses.toLocaleString('tr-TR') : 0} TL</h3>
-                          <span className="text-[10px] text-red-400/80">Kayıtlı tüm gider kalemleri</span>
-                        </div>
-                        <div className="metric-icon bg-red-500/10 text-red-400">
-                          <ArrowDownLeft size={20} />
-                        </div>
-                      </div>
-
-                      <div className="glass-panel metric-card bg-gradient-to-br from-emerald-950/20 to-emerald-900/10 border border-emerald-500/15">
-                        <div>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block text-emerald-400 font-bold">Net İşletme Kârı</span>
-                          <h3 className="text-xl font-extrabold text-emerald-400 mt-1 font-mono">{(metrics.totalCihazProfit + metrics.totalAksesuarProfit - metrics.totalExpenses).toLocaleString('tr-TR')} TL</h3>
-                          <div className="flex flex-col gap-0.5 mt-1">
-                            <span className="text-[10px] text-emerald-500/80">Cihaz: {metrics.totalCihazProfit.toLocaleString('tr-TR')} TL</span>
-                            <span className="text-[10px] text-emerald-500/80">Aksesuar: {metrics.totalAksesuarProfit.toLocaleString('tr-TR')} TL − Giderler</span>
+                      {/* Period Sales History Section */}
+                      <div>
+                        <h3 className="text-sm font-bold text-white mb-4">Dönem Satış Geçmişi</h3>
+                        
+                        {periodSales.length === 0 ? (
+                          <div className="glass-panel p-8 text-center text-secondary text-xs">
+                            Seçilen dönemde yapılmış bir satış kaydı bulunmamaktadır.
                           </div>
-                        </div>
-                        <div className="metric-icon bg-emerald-500/15 text-emerald-400 border border-emerald-500/10">
-                          <ArrowUpRight size={20} />
-                        </div>
-                      </div>
-                    </section>
+                        ) : (() => {
+                          const groupedSales = {};
+                          periodSales.forEach((sale) => {
+                            const d = sale.date;
+                            if (!groupedSales[d]) groupedSales[d] = [];
+                            groupedSales[d].push(sale);
+                          });
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      {/* Weekly & Monthly Charts */}
-                      <div className="lg:col-span-2 flex flex-col gap-6">
-                        {/* Weekly sales chart */}
-                        <div className="glass-panel p-5">
-                          <h4 className="font-bold text-white text-sm mb-4">Haftalık Satış Analizi (Son 7 Gün)</h4>
-                          {renderLineChart(weeklyChart, 'weekly')}
-                        </div>
+                          const sortedDates = Object.keys(groupedSales).sort((a, b) => b.localeCompare(a));
 
-                        {/* Monthly chart */}
-                        <div className="glass-panel p-5">
-                          <h4 className="font-bold text-white text-sm mb-4">Aylık Satış Analizi (Son Ay)</h4>
-                          {renderLineChart(monthlyChart, 'monthly')}
-                        </div>
-                      </div>
+                          return (
+                            <div className="flex flex-col gap-4">
+                              {sortedDates.map((dateStr, index) => {
+                                const daySales = groupedSales[dateStr];
+                                const dayTotal = daySales.reduce((sum, s) => sum + s.total_amount, 0);
+                                const dayCount = daySales.length;
 
-                      {/* Sidebar stats & Critical Stock */}
-                      <div className="flex flex-col gap-6">
-                        {/* Son Gider Kayıtları */}
-                        <div className="glass-panel p-5">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="font-bold text-white text-sm">Son Gider Kayıtları</h4>
-                            <span className="badge badge-danger">Giderler</span>
-                          </div>
+                                let formattedDate = dateStr;
+                                try {
+                                  const dObj = new Date(dateStr + 'T00:00:00');
+                                  formattedDate = dObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+                                } catch(e) {}
 
-                          <div className="flex flex-col gap-3">
-                            {expensesList.length === 0 ? (
-                              <div className="text-center py-4 text-secondary text-xs">Kayıtlı gider bulunmamaktadır.</div>
-                            ) : (
-                              expensesList.slice(0, 5).map(exp => (
-                                <div key={exp.id} className="p-3 rounded-lg bg-red-500/5 border border-red-500/10 flex justify-between items-center text-xs">
-                                  <div>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <h5 className="font-semibold text-white truncate max-w-[120px]">{exp.description}</h5>
-                                      <span className={`text-[7px] px-1 py-0.2 rounded font-bold font-mono ${
-                                        exp.category === 'Kargo' ? 'bg-orange-500/25 text-orange-400 border border-orange-500/10' :
-                                        exp.category === 'Emanet' ? 'bg-blue-500/25 text-blue-400 border border-blue-500/10' :
-                                        exp.category === 'Teknik Servis' ? 'bg-purple-500/25 text-purple-400 border border-purple-500/10' :
-                                        'bg-emerald-500/25 text-emerald-400 border border-emerald-500/10'
-                                      }`}>
-                                        {exp.category || 'Genel Gider'}
-                                      </span>
-                                    </div>
-                                    <span className="text-[10px] text-muted block mt-0.5">{exp.date}</span>
+                                const isExpanded = expandedDates[dateStr] !== undefined ? expandedDates[dateStr] : (index === 0);
+
+                                return (
+                                  <div key={dateStr} className="glass-panel p-0 overflow-hidden border border-indigo-500/10 shadow-lg animate-fade-in">
+                                    <button 
+                                      onClick={() => {
+                                        const isCurrentlyExpanded = expandedDates[dateStr] !== undefined ? expandedDates[dateStr] : (index === 0);
+                                        setExpandedDates(prev => ({
+                                          ...prev,
+                                          [dateStr]: !isCurrentlyExpanded
+                                        }));
+                                      }}
+                                      className="w-full flex items-center justify-between p-3.5 bg-indigo-950/15 hover:bg-indigo-900/20 transition-colors border-b border-white/5 cursor-pointer text-left"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded bg-indigo-500/10 text-indigo-400">
+                                          {isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />}
+                                        </div>
+                                        <div>
+                                          <h3 className="font-bold text-white text-xs">{formattedDate}</h3>
+                                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-[10px] text-secondary font-sans">
+                                            <span>{dayCount} Satış İşlemi</span>
+                                            <span>•</span>
+                                            <span className="font-semibold text-emerald-400 font-mono">Toplam Ciro: {dayTotal.toLocaleString('tr-TR')} TL</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-secondary">
+                                        <div className="hidden lg:flex gap-3 text-[10px] text-muted font-mono mr-2">
+                                          <span>Nakit: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Nakit').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
+                                          <span>Kart: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Kredi Kartı').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
+                                          <span>Cari: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Cari (Borç)').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
+                                        </div>
+                                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                      </div>
+                                    </button>
+
+                                    {isExpanded && (
+                                      <div className="divide-y divide-white/5 bg-black/10">
+                                        {daySales.map((sale) => (
+                                          <div key={sale.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs hover:bg-white/1 transition-colors">
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                                                <span className="font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded text-[10px]">
+                                                  Fatura No: {sale.id}
+                                                </span>
+                                                <span className={`badge ${sale.payment_method === 'Cari (Borç)' ? 'badge-danger' : 'badge-success'} rounded px-2 py-0.5 text-[9px] font-bold`}>
+                                                  {sale.payment_method}
+                                                </span>
+                                                <span className="text-secondary font-mono text-[10px]">
+                                                  Müşteri: <strong className="text-white">{customers.find(c => c.id === sale.cari_id)?.name || 'Peşin Satış'}</strong>
+                                                </span>
+                                              </div>
+                                              
+                                              {/* Items list */}
+                                              <div className="flex flex-col gap-2 mt-2 bg-black/15 p-3 rounded-lg border border-white/5 max-w-2xl font-sans">
+                                                {sale.items?.map((item, idx) => (
+                                                  <div key={idx} className="flex justify-between items-center text-[11px] text-secondary border-b border-white/5 last:border-b-0 pb-1.5 last:pb-0">
+                                                    <div className="flex flex-col gap-0.5 min-w-0 pr-4">
+                                                      <span className="font-semibold text-white truncate max-w-[280px] sm:max-w-md">• {item.name}</span>
+                                                      <span className="text-[10px] text-secondary font-mono">Birim: {item.price.toLocaleString('tr-TR')} TL x {item.quantity}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 shrink-0">
+                                                      <span className="font-mono text-white font-bold">{(item.price * item.quantity).toLocaleString('tr-TR')} TL</span>
+                                                      <div className="flex items-center gap-1.5 ml-2">
+                                                        <button 
+                                                          onClick={() => handleOpenEditSaleItem(sale.id, item)}
+                                                          title="Ürünü Düzenle"
+                                                          className="p-1 rounded hover:bg-indigo-500/10 text-secondary hover:text-indigo-400 cursor-pointer transition-colors"
+                                                        >
+                                                          <Edit2 size={12} />
+                                                        </button>
+                                                        <button 
+                                                          onClick={() => handleDeleteSaleItem(sale.id, item)}
+                                                          title="Ürünü Sil"
+                                                          className="p-1 rounded hover:bg-red-500/10 text-secondary hover:text-red-400 cursor-pointer transition-colors"
+                                                        >
+                                                          <Trash2 size={12} />
+                                                        </button>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                              
+                                              {sale.notes && (
+                                                <div className="text-[10px] text-muted mt-2 block font-sans">
+                                                  Not: {sale.notes}
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            <div className="flex items-end md:items-center gap-4 shrink-0 justify-between md:justify-end border-t border-white/5 md:border-t-0 pt-3 md:pt-0">
+                                              <div className="text-right">
+                                                <span className="text-[10px] text-muted block font-sans">Toplam Tutar</span>
+                                                <span className="text-sm font-extrabold text-white font-mono">{sale.total_amount.toLocaleString('tr-TR')} TL</span>
+                                              </div>
+
+                                              <button 
+                                                onClick={() => handleDeleteSale(sale.id)}
+                                                className="px-3 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-[11px] text-red-400 flex items-center justify-center gap-1 border border-red-500/20 font-semibold cursor-pointer transition-colors"
+                                              >
+                                                <Trash2 size={13} />
+                                                <span>Satışı İptal Et</span>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                  <span className="text-red-400 font-bold bg-red-500/15 px-2 py-0.5 rounded font-mono shrink-0">
-                                    -{exp.amount.toLocaleString('tr-TR')} TL
-                                  </span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Recent Transactions list */}
-                        <div className="glass-panel p-5">
-                          <h4 className="font-bold text-white text-sm mb-4">Son Satış İşlemleri</h4>
-                          <div className="flex flex-col gap-3">
-                            {sales.slice(0, 5).map((sale) => (
-                              <div key={sale.id} className="p-3 rounded-lg border border-white/5 bg-white/2 flex justify-between items-center text-xs">
-                                <div className="min-w-0 pr-2">
-                                  <h5 className="font-semibold text-white truncate">
-                                    {sale.items.map(item => item.name).join(', ')}
-                                  </h5>
-                                  <div className="flex items-center gap-1.5 text-[10px] text-secondary mt-0.5">
-                                    <span>{sale.date}</span>
-                                    <span>•</span>
-                                    <span>{customers.find(c => c.id === sale.cari_id)?.name || 'Peşin Satış'}</span>
-                                  </div>
-                                </div>
-                                <span className="font-bold text-white shrink-0 font-mono">
-                                  {sale.total_amount.toLocaleString('tr-TR')} TL
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="animate-fade-in flex flex-col gap-5">
-                    {/* Report Filters */}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2 glass-panel px-3 py-1.5 border border-white/5">
-                        <span className="text-xs text-secondary font-medium">Dönem:</span>
-                        <select 
-                          value={reportRangeFilter}
-                          onChange={(e) => setReportRangeFilter(e.target.value)}
-                          className="bg-transparent border-0 text-white font-semibold text-xs focus:ring-0 cursor-pointer outline-none font-sans mr-2"
-                          style={{ colorScheme: 'dark' }}
-                        >
-                          <option value="today" className="bg-neutral-900 text-white">Bugün</option>
-                          <option value="7days" className="bg-neutral-900 text-white">Son 7 Gün</option>
-                          <option value="month" className="bg-neutral-900 text-white">Son Ay</option>
-                          <option value="3months" className="bg-neutral-900 text-white">Son 3 Ay</option>
-                          <option value="all" className="bg-neutral-900 text-white">Tüm Zamanlar</option>
-                          <option value="custom" className="bg-neutral-900 text-white">Özel Tarih</option>
-                        </select>
-                      </div>
-
-                      {reportRangeFilter === 'custom' && (
-                        <div className="flex items-center gap-2 glass-panel px-3.5 py-1.5 border border-white/5 animate-fade-in">
-                          <span className="text-xs text-secondary font-medium">Tarih:</span>
-                          <input 
-                            type="date" 
-                            className="bg-transparent border-0 text-white font-semibold text-xs focus:ring-0 cursor-pointer outline-none font-mono"
-                            value={reportDateFilter}
-                            onChange={(e) => setReportDateFilter(e.target.value)}
-                          />
-                        </div>
-                      )}
-
-                      <div className="relative w-full sm:max-w-md">
-                        <span className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-[var(--text-muted)]">
-                          <Search size={16} />
-                        </span>
-                        <input 
-                          type="text" 
-                          placeholder="Raporda ürün adı veya barkod ara..." 
-                          className="custom-input !pl-10 text-xs w-full font-sans"
-                          value={reportSearch}
-                          onChange={(e) => setReportSearch(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Compile data */}
-                    {(() => {
-                      const today = new Date();
-                      const todayStr = today.toLocaleDateString('sv-SE');
-                      
-                      let salesForReport = [];
-                      let expensesForReport = [];
-                      const isGenel = (e) => !e.category || e.category === 'Genel Gider';
-                      if (reportRangeFilter === 'today') {
-                        salesForReport = sales.filter(s => s.date === todayStr);
-                        expensesForReport = expensesList.filter(e => e.date === todayStr && isGenel(e));
-                      } else if (reportRangeFilter === '7days') {
-                        const limitDate = new Date();
-                        limitDate.setDate(today.getDate() - 7);
-                        const limitStr = limitDate.toLocaleDateString('sv-SE');
-                        salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
-                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr && isGenel(e));
-                      } else if (reportRangeFilter === 'month') {
-                        const limitDate = new Date();
-                        limitDate.setMonth(today.getMonth() - 1);
-                        const limitStr = limitDate.toLocaleDateString('sv-SE');
-                        salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
-                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr && isGenel(e));
-                      } else if (reportRangeFilter === '3months') {
-                        const limitDate = new Date();
-                        limitDate.setMonth(today.getMonth() - 3);
-                        const limitStr = limitDate.toLocaleDateString('sv-SE');
-                        salesForReport = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
-                        expensesForReport = expensesList.filter(e => e.date >= limitStr && e.date <= todayStr && isGenel(e));
-                      } else if (reportRangeFilter === 'all') {
-                        salesForReport = sales;
-                        expensesForReport = expensesList.filter(e => isGenel(e));
-                      } else {
-                        salesForReport = sales.filter(s => s.date === reportDateFilter);
-                        expensesForReport = expensesList.filter(e => e.date === reportDateFilter && isGenel(e));
-                      }
-
-                      const totalExpensesForReport = expensesForReport.reduce((sum, e) => sum + e.amount, 0);
-
-                      // Aggregate product sales
-                      const productAgg: Record<string, any> = {};
-                      
-                      salesForReport.forEach(sale => {
-                        sale.items.forEach(item => {
-                          const prodInfo = products.find(p => p.id === item.product_id);
-                          
-                          const productId = item.product_id;
-                          const type = prodInfo ? prodInfo.type : 'Diğer';
-                          const category = prodInfo ? prodInfo.category : 'Diğer';
-                          const purchasePrice = prodInfo ? (prodInfo.purchase_price || 0) : 0;
-                          
-                          if (!productAgg[productId]) {
-                            productAgg[productId] = {
-                              id: productId,
-                              name: item.name,
-                              barcode: prodInfo ? prodInfo.barcode : '-',
-                              imei: prodInfo ? prodInfo.imei : '-',
-                              category: category,
-                              type: type,
-                              quantity: 0,
-                              totalRevenue: 0,
-                              purchasePrice: purchasePrice
-                            };
-                          }
-                          
-                          productAgg[productId].quantity += item.quantity;
-                          productAgg[productId].totalRevenue += item.quantity * item.price;
-                        });
-                      });
-
-                      // Convert to array and filter by search query
-                      const allAggregatedItems = Object.values(productAgg).filter(item => 
-                        !reportSearch || 
-                        normalizeString(item.name).includes(normalizeString(reportSearch)) || 
-                        (item.barcode && normalizeString(item.barcode).includes(normalizeString(reportSearch))) || 
-                        (item.imei && normalizeString(item.imei).includes(normalizeString(reportSearch)))
-                      );
-
-                      // Separate into Devices and Accessories/Others
-                      const deviceReportItems = allAggregatedItems.filter(item => item.type === 'Cihaz');
-                      const otherReportItems = allAggregatedItems.filter(item => item.type !== 'Cihaz');
-
-                      // Helper: tamir stok kartı mı? (type=Hizmet veya adı 'tamir'/'tamır' olan ürünler)
-                      // Bu ürünler sadece kasaya işlenir, kâr hesabına DAHIL EDİLMEZ
-                      const isRepairItem = (item: any) => {
-                        const name = (item.name || '').toLowerCase().trim();
-                        return item.type === 'Hizmet' || name === 'tamir' || name === 'tamır';
-                      };
-
-                      // Calculations
-                      const totalRevenue = allAggregatedItems.reduce((sum, item) => sum + item.totalRevenue, 0);
-                      const totalSoldQty = allAggregatedItems.reduce((sum, item) => sum + item.quantity, 0);
-                      
-                      // Device profitability calculations
-                      const totalDevicePurchaseCost = deviceReportItems.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
-                      const totalDeviceSalesRevenue = deviceReportItems.reduce((sum, item) => sum + item.totalRevenue, 0);
-                      const totalDeviceProfit = totalDeviceSalesRevenue - totalDevicePurchaseCost;
-
-                      // Accessory profitability calculations
-                      // Tamir ürünleri kâr hesabına dahil edilmez, sadece ciro olarak işlenir
-                      const nonRepairOtherItems = otherReportItems.filter(item => !isRepairItem(item));
-                      const totalOtherPurchaseCost = nonRepairOtherItems.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
-                      const totalOtherSalesRevenue = nonRepairOtherItems.reduce((sum, item) => sum + item.totalRevenue, 0);
-                      const totalOtherProfit = totalOtherSalesRevenue - totalOtherPurchaseCost;
-
-                      return (
-                        <>
-                          {/* Summary Metrics (4 Cards) */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans mb-2">
-                            <div className="glass-panel p-4 bg-gradient-to-r from-emerald-950/10 to-emerald-900/5 border border-white/5">
-                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Cihaz Satış Kârı</span>
-                              <h3 className="text-lg font-extrabold text-emerald-400 mt-1 font-mono">{totalDeviceProfit.toLocaleString('tr-TR')} TL</h3>
-                              <span className="text-[9px] text-secondary">Satılan cihaz net karı</span>
-                            </div>
-                            <div className="glass-panel p-4 bg-gradient-to-r from-emerald-950/10 to-emerald-900/5 border border-white/5">
-                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Aksesuar Satış Kârı</span>
-                              <h3 className="text-lg font-extrabold text-emerald-400 mt-1 font-mono">{totalOtherProfit.toLocaleString('tr-TR')} TL</h3>
-                              <span className="text-[9px] text-secondary">Aksesuar & diğer net karı</span>
-                            </div>
-                            <div className="glass-panel p-4 bg-gradient-to-r from-red-950/20 to-red-900/10 border border-red-500/10">
-                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block text-red-400">Dönem Giderleri</span>
-                              <h3 className="text-lg font-extrabold text-red-400 mt-1 font-mono">-{totalExpensesForReport.toLocaleString('tr-TR')} TL</h3>
-                              <span className="text-[9px] text-red-400/80">Dönem içi gider toplamı</span>
-                            </div>
-                            <div className="glass-panel p-4">
-                              <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Rapor Hasılatı</span>
-                              <h3 className="text-lg font-extrabold text-white mt-1 font-mono">{totalRevenue.toLocaleString('tr-TR')} TL</h3>
-                              <span className="text-[9px] text-secondary">Toplam satış cirosu ({totalSoldQty} adet ürün)</span>
-                            </div>
-                          </div>
-
-                          {/* SECTION 1: CİHAZ SATIŞ VE KÂRLILIK RAPORU */}
-                          <div className="glass-panel p-0 overflow-hidden border border-emerald-500/10 shadow-lg mt-4">
-                            <div className="p-4 border-b border-emerald-500/10 bg-emerald-950/5 flex justify-between items-center">
-                              <div className="flex items-center gap-2 text-emerald-400">
-                                <Tablet size={16} />
-                                <h4 className="font-bold text-sm">Cihaz Satış & Kârlılık Raporu</h4>
-                              </div>
-                              <span className="text-[10px] text-emerald-400 font-semibold font-mono">{deviceReportItems.length} cihaz listelendi</span>
-                            </div>
-
-                            {deviceReportItems.length === 0 ? (
-                              <div className="p-8 text-center text-secondary text-xs">
-                                Seçilen dönemde satış yapılmış cihaz kaydı bulunmamaktadır.
-                              </div>
-                            ) : (
-                              <>
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-left text-xs border-collapse">
-                                    <thead>
-                                      <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
-                                        <th className="p-3 pl-4">Ürün Adı</th>
-                                        <th className="p-3">IMEI</th>
-                                        <th className="p-3 text-right">Adet</th>
-                                        <th className="p-3 text-right">Birim Alış (Maliyet)</th>
-                                        <th className="p-3 text-right">Toplam Alış</th>
-                                        <th className="p-3 text-right">Toplam Satış (Ciro)</th>
-                                        <th className="p-3 text-right text-emerald-400">Net Kâr</th>
-                                        <th className="p-3 text-right pr-4 w-12">İşlem</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5 font-sans">
-                                      {deviceReportItems.slice((pageReportDevice - 1) * 10, pageReportDevice * 10).map((item) => {
-                                        const totalPurchase = item.purchasePrice * item.quantity;
-                                        const profit = item.totalRevenue - totalPurchase;
-
-                                        return (
-                                          <tr key={item.id} className="hover:bg-white/1 transition-colors">
-                                            <td className="p-3 pl-4 font-semibold text-white">{item.name}</td>
-                                            <td className="p-3 font-mono font-bold text-indigo-400">{item.imei || '-'}</td>
-                                            <td className="p-3 text-right font-mono font-bold text-white">{item.quantity}</td>
-                                            <td className="p-3 text-right font-mono text-secondary">{item.purchasePrice.toLocaleString('tr-TR')} TL</td>
-                                            <td className="p-3 text-right font-mono text-secondary">{totalPurchase.toLocaleString('tr-TR')} TL</td>
-                                            <td className="p-3 text-right font-mono text-white font-bold">{item.totalRevenue.toLocaleString('tr-TR')} TL</td>
-                                            <td className={`p-3 text-right font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                              {profit >= 0 ? '+' : ''}{profit.toLocaleString('tr-TR')} TL
-                                            </td>
-                                            <td className="p-3 text-right pr-4">
-                                              {item.id !== 'manual' && (
-                                                <button
-                                                  onClick={() => handleOpenEditProductFromReport(item.id)}
-                                                  title="Stok Kartını Düzenle"
-                                                  className="p-1 rounded hover:bg-indigo-500/10 text-indigo-400 hover:text-white cursor-pointer transition-colors"
-                                                >
-                                                  <Edit2 size={12} />
-                                                </button>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                      {/* Table summary row */}
-                                      <tr className="bg-white/2 font-bold border-t border-white/10 text-white">
-                                        <td className="p-3 pl-4" colSpan={2}>TOPLAM CİHAZ GRUBU HESABI</td>
-                                        <td className="p-3 text-right font-mono">{deviceReportItems.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                                        <td className="p-3 text-right">-</td>
-                                        <td className="p-3 text-right font-mono text-secondary">{totalDevicePurchaseCost.toLocaleString('tr-TR')} TL</td>
-                                        <td className="p-3 text-right font-mono">{totalDeviceSalesRevenue.toLocaleString('tr-TR')} TL</td>
-                                        <td className="p-3 text-right font-mono text-emerald-400">{totalDeviceProfit.toLocaleString('tr-TR')} TL</td>
-                                        <td className="p-3 text-right pr-4">-</td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                                {renderPagination(pageReportDevice, deviceReportItems.length, setPageReportDevice)}
-                              </>
-                            )}
-                          </div>
-
-                          {/* SECTION 2: AKSESUAR VE DİĞER ÜRÜNLER SATIŞ RAPORU */}
-                          <div className="glass-panel p-0 overflow-hidden border border-white/5 shadow-lg mt-6">
-                            <div className="p-4 border-b border-white/5 bg-white/2 flex justify-between items-center">
-                              <div className="flex items-center gap-2 text-indigo-400">
-                                <Package size={16} />
-                                <h4 className="font-bold text-sm">Aksesuar & Diğer Ürün Satış Raporu</h4>
-                              </div>
-                              <span className="text-[10px] text-indigo-400 font-semibold font-mono">{otherReportItems.length} çeşit ürün listelendi</span>
-                            </div>
-
-                            {otherReportItems.length === 0 ? (
-                              <div className="p-8 text-center text-secondary text-xs">
-                                Seçilen dönemde satış yapılmış aksesuar/diğer ürün kaydı bulunmamaktadır.
-                              </div>
-                            ) : (
-                              <>
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-left text-xs border-collapse">
-                                    <thead>
-                                      <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
-                                        <th className="p-3 pl-4">Ürün Adı</th>
-                                        <th className="p-3">Kategori</th>
-                                        <th className="p-3 text-right">Adet</th>
-                                        <th className="p-3 text-right">Maliyet (Alış)</th>
-                                        <th className="p-3 text-right">Toplam Alış</th>
-                                        <th className="p-3 text-right">Toplam Satış (Ciro)</th>
-                                        <th className="p-3 text-right text-emerald-400">Net Kâr</th>
-                                        <th className="p-3 text-right pr-4 w-12">İşlem</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5 font-sans">
-                                      {otherReportItems.slice((pageReportOther - 1) * 10, pageReportOther * 10).map((item) => {
-                                        const isRepair = isRepairItem(item);
-                                        const totalPurchase = isRepair ? 0 : item.purchasePrice * item.quantity;
-                                        const profit = isRepair ? null : (item.totalRevenue - totalPurchase);
-
-                                        return (
-                                          <tr key={item.id} className={`hover:bg-white/1 transition-colors ${isRepair ? 'opacity-80' : ''}`}>
-                                            <td className="p-3 pl-4 font-semibold text-white">
-                                              {item.name}
-                                              {isRepair && <span className="ml-1 text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded px-1 py-0.5 align-middle">Sadece Kasa</span>}
-                                            </td>
-                                            <td className="p-3 text-secondary">{item.category}</td>
-                                            <td className="p-3 text-right font-mono font-bold text-white">{item.quantity}</td>
-                                            <td className="p-3 text-right font-mono text-secondary">{isRepair ? '-' : (item.purchasePrice || 0).toLocaleString('tr-TR') + ' TL'}</td>
-                                            <td className="p-3 text-right font-mono text-secondary">{isRepair ? '-' : totalPurchase.toLocaleString('tr-TR') + ' TL'}</td>
-                                            <td className="p-3 text-right font-mono text-white font-bold">{item.totalRevenue.toLocaleString('tr-TR')} TL</td>
-                                            <td className={`p-3 text-right font-mono font-bold ${profit === null ? 'text-amber-400' : profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                              {profit === null ? '— Kasa Geliri' : (profit >= 0 ? '+' : '') + profit.toLocaleString('tr-TR') + ' TL'}
-                                            </td>
-                                            <td className="p-3 text-right pr-4">
-                                              {item.id !== 'manual' && (
-                                                <button
-                                                  onClick={() => handleOpenEditProductFromReport(item.id)}
-                                                  title="Stok Kartını Düzenle"
-                                                  className="p-1 rounded hover:bg-indigo-500/10 text-indigo-400 hover:text-white cursor-pointer transition-colors"
-                                                >
-                                                  <Edit2 size={12} />
-                                                </button>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                      {/* Table summary row */}
-                                      <tr className="bg-white/2 font-bold border-t border-white/10 text-white">
-                                        <td className="p-3 pl-4" colSpan={2}>TOPLAM AKSESUAR VE DİĞER</td>
-                                        <td className="p-3 text-right font-mono">{otherReportItems.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                                        <td className="p-3 text-right">-</td>
-                                        <td className="p-3 text-right font-mono text-secondary">{totalOtherPurchaseCost.toLocaleString('tr-TR')} TL</td>
-                                        <td className="p-3 text-right font-mono">{otherReportItems.reduce((sum, item) => sum + item.totalRevenue, 0).toLocaleString('tr-TR')} TL</td>
-                                        <td className="p-3 text-right font-mono text-emerald-400">{totalOtherProfit.toLocaleString('tr-TR')} TL <span className="text-[9px] text-amber-400/80 font-normal">(tamir hariç)</span></td>
-                                        <td className="p-3 text-right pr-4">-</td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                                {renderPagination(pageReportOther, otherReportItems.length, setPageReportOther)}
-                              </>
-                            )}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
@@ -5192,7 +5103,7 @@ export default function DashboardHome() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-bold tracking-tight text-white mb-0.5">Turkcell Prim Gelirleri</h2>
-                    <p className="text-secondary text-xs">Turkcell'den gelen prim ve ek hak edişleri kar olarak sisteme işleyin.</p>
+                    <p className="text-secondary text-xs">Turkcell&apos;den gelen prim ve ek hak edişleri kar olarak sisteme işleyin.</p>
                   </div>
                   <button 
                     onClick={() => setShowAddTurkcell(true)} 

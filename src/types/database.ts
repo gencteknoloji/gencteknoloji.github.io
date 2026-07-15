@@ -122,6 +122,10 @@ export interface DashboardMetrics {
   totalExpenses: number;
   totalCihazProfit: number;
   totalAksesuarProfit: number;
+  totalDeviceStockCost?: number;
+  totalDeviceStockSale?: number;
+  deviceCount?: number;
+  totalAccessoryStockCost?: number;
 }
 
 export interface ChartPoint {

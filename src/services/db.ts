@@ -824,20 +824,23 @@ export const dbService = {
     const tempMonth = new Date();
     tempMonth.setDate(tempMonth.getDate() - 30);
     const thirtyDaysAgoStr = tempMonth.toLocaleDateString('sv-SE');
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('sv-SE');
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('sv-SE');
 
     const sql = `
       SELECT json_build_object(
         'cariler', COALESCE((SELECT json_agg(c) FROM (SELECT * FROM cariler ORDER BY id DESC) c), '[]'::json),
-        'products', COALESCE((SELECT json_agg(p) FROM (SELECT * FROM products ORDER BY id DESC, name ASC) p), '[]'::json),
-        'sales', COALESCE((SELECT json_agg(s) FROM (SELECT * FROM sales ORDER BY id DESC) s), '[]'::json),
-        'sale_items', COALESCE((SELECT json_agg(si) FROM (SELECT id, sale_id, product_id, quantity, price, name FROM sale_items) si), '[]'::json),
+        'sales', COALESCE((SELECT json_agg(s) FROM (SELECT * FROM sales WHERE date = ? ORDER BY id DESC) s), '[]'::json),
+        'sale_items', COALESCE((
+          SELECT json_agg(si) FROM (
+            SELECT si.id, si.sale_id, si.product_id, si.quantity, si.price, si.name 
+            FROM sale_items si
+            JOIN sales s ON si.sale_id = s.id
+            WHERE s.date = ?
+          ) si
+        ), '[]'::json),
         'turkcell_premiums', COALESCE((SELECT json_agg(tp) FROM (SELECT * FROM turkcell_premiums ORDER BY date DESC, id DESC) tp), '[]'::json),
-        'expenses', COALESCE((SELECT json_agg(e) FROM (SELECT * FROM expenses ORDER BY date DESC, id DESC) e), '[]'::json),
+        'expenses', COALESCE((SELECT json_agg(e) FROM (SELECT * FROM expenses WHERE date >= ? ORDER BY date DESC, id DESC) e), '[]'::json),
         'turkcell_devices', COALESCE((SELECT json_agg(td) FROM (SELECT * FROM turkcell_devices ORDER BY date_added DESC, id DESC) td), '[]'::json),
-        'daily_closings', COALESCE((SELECT json_agg(dc) FROM (SELECT * FROM daily_closings ORDER BY date DESC) dc), '[]'::json),
+        'daily_closings', COALESCE((SELECT json_agg(dc) FROM (SELECT * FROM daily_closings WHERE date >= ? ORDER BY date DESC) dc), '[]'::json),
         'dashboard', json_build_object(
           'todaySales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date = ?), 0),
           'weekSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= ?), 0),
@@ -860,7 +863,11 @@ export const dbService = {
             JOIN products prod ON s_item.product_id = prod.id 
             JOIN sales s ON s_item.sale_id = s.id 
             WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
-          ), 0)
+          ), 0),
+          'totalDeviceStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
+          'totalDeviceStockSale', COALESCE((SELECT SUM(sale_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
+          'deviceCount', COALESCE((SELECT SUM(COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
+          'totalAccessoryStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 0)) FROM products WHERE type != 'Cihaz' AND category NOT IN ('Tablet', 'Telefon')), 0)
         ),
         'weeklySalesRaw', COALESCE((
           SELECT json_agg(t) FROM (
@@ -876,16 +883,19 @@ export const dbService = {
     `;
 
     const res = await db.get<{ payload: any }>(sql, [
-      todayStr,
-      sevenDaysAgoStr,
-      thirtyDaysAgoStr,
-      sevenDaysAgoStr,
-      thirtyDaysAgoStr
+      todayStr,          // sales filter
+      todayStr,          // sale_items filter
+      thirtyDaysAgoStr,  // expenses filter
+      thirtyDaysAgoStr,  // daily_closings filter
+      todayStr,          // todaySales metric
+      sevenDaysAgoStr,   // weekSales metric
+      thirtyDaysAgoStr,  // monthSales metric
+      sevenDaysAgoStr,   // weeklySalesRaw chart
+      thirtyDaysAgoStr   // monthlySalesRaw chart
     ]);
     
     const payload = res?.payload || {
       cariler: [],
-      products: [],
       sales: [],
       sale_items: [],
       turkcell_premiums: [],
@@ -950,7 +960,7 @@ export const dbService = {
 
     return {
       cariler: payload.cariler || [],
-      products: payload.products || [],
+      products: [], // Lazy loaded
       sales: payload.sales || [],
       sale_items: payload.sale_items || [],
       turkcell_premiums: payload.turkcell_premiums || [],
@@ -963,6 +973,131 @@ export const dbService = {
         monthlyChart,
         serverIp: 'localhost'
       }
+    };
+  },
+
+  async getProductsByFolder(folder: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'diger'): Promise<Product[]> {
+    if (folder === 'device') {
+      return db.all<Product>("SELECT * FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon') ORDER BY name ASC");
+    } else if (folder === 'kilif') {
+      return db.all<Product>("SELECT * FROM products WHERE category = 'Telefon Kılıfı' ORDER BY name ASC");
+    } else if (folder === 'cam') {
+      return db.all<Product>("SELECT * FROM products WHERE category = 'Telefon Kırılmaz Camı' ORDER BY name ASC");
+    } else if (folder === 'sarj') {
+      return db.all<Product>("SELECT * FROM products WHERE category IN ('Şarj Cihazı', 'Şarj Kablosu') ORDER BY name ASC");
+    } else if (folder === 'kulaklik') {
+      return db.all<Product>("SELECT * FROM products WHERE category = 'Bluetooth Kulaklık' ORDER BY name ASC");
+    } else {
+      return db.all<Product>(`
+        SELECT * FROM products 
+        WHERE type != 'Cihaz' 
+          AND category NOT IN ('Tablet', 'Telefon', 'Telefon Kılıfı', 'Telefon Kırılmaz Camı', 'Şarj Cihazı', 'Şarj Kablosu', 'Bluetooth Kulaklık')
+        ORDER BY name ASC
+      `);
+    }
+  },
+
+  async searchProducts(query: string): Promise<Product[]> {
+    if (!query || !query.trim()) return [];
+    const q = `%${query.trim().toLowerCase()}%`;
+    return db.all<Product>(
+      `SELECT * FROM products 
+       WHERE LOWER(name) LIKE ? OR LOWER(barcode) LIKE ? OR LOWER(imei) LIKE ? 
+       LIMIT 50`,
+      [q, q, q]
+    );
+  },
+
+  async getSalesAnalysis(startDate: string, endDate: string): Promise<any> {
+    const sql = `
+      SELECT json_build_object(
+        'summary', json_build_object(
+          'totalSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= ? AND date <= ?), 0),
+          'cihazSales', COALESCE((
+            SELECT SUM(si.price * si.quantity) 
+            FROM sale_items si 
+            JOIN products p ON si.product_id = p.id
+            JOIN sales s ON si.sale_id = s.id
+            WHERE s.date >= ? AND s.date <= ? AND p.type = 'Cihaz'
+          ), 0),
+          'aksesuarSales', COALESCE((
+            SELECT SUM(si.price * si.quantity) 
+            FROM sale_items si 
+            JOIN products p ON si.product_id = p.id
+            JOIN sales s ON si.sale_id = s.id
+            WHERE s.date >= ? AND s.date <= ? AND p.type != 'Cihaz' AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
+          ), 0),
+          'totalExpenses', COALESCE((
+            SELECT SUM(amount) FROM expenses 
+            WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
+          ), 0),
+          'netProfit', (
+            COALESCE((
+              SELECT SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) 
+              FROM sale_items si 
+              JOIN products p ON si.product_id = p.id
+              JOIN sales s ON si.sale_id = s.id
+              WHERE s.date >= ? AND s.date <= ? AND p.type = 'Cihaz'
+            ), 0) +
+            COALESCE((
+              SELECT SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) 
+              FROM sale_items si 
+              JOIN products p ON si.product_id = p.id
+              JOIN sales s ON si.sale_id = s.id
+              WHERE s.date >= ? AND s.date <= ? AND p.type != 'Cihaz' AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
+            ), 0) -
+            COALESCE((
+              SELECT SUM(amount) FROM expenses 
+              WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
+            ), 0)
+          )
+        ),
+        'sales', COALESCE((
+          SELECT json_agg(t) FROM (
+            SELECT * FROM sales WHERE date >= ? AND date <= ? ORDER BY date DESC, id DESC
+          ) t
+        ), '[]'::json),
+        'sale_items', COALESCE((
+          SELECT json_agg(t) FROM (
+            SELECT si.id, si.sale_id, si.product_id, si.quantity, si.price, si.name 
+            FROM sale_items si
+            JOIN sales s ON si.sale_id = s.id
+            WHERE s.date >= ? AND s.date <= ?
+          ) t
+        ), '[]'::json)
+      ) as payload
+    `;
+
+    const params = [];
+    for (let i = 0; i < 9; i++) {
+      params.push(startDate, endDate);
+    }
+
+    const res = await db.get<{ payload: any }>(sql, params);
+    const payload = res?.payload || {
+      summary: { totalSales: 0, aksesuarSales: 0, cihazSales: 0, totalExpenses: 0, netProfit: 0 },
+      sales: [],
+      sale_items: []
+    };
+
+    const sales = payload.sales || [];
+    const sale_items = payload.sale_items || [];
+    
+    const itemsBySaleId: Record<string, any[]> = {};
+    (sale_items || []).forEach((item: any) => {
+      if (!itemsBySaleId[item.sale_id]) {
+        itemsBySaleId[item.sale_id] = [];
+      }
+      itemsBySaleId[item.sale_id].push(item);
+    });
+
+    (sales || []).forEach((s: any) => {
+      s.items = itemsBySaleId[s.id] || [];
+    });
+
+    return {
+      summary: payload.summary,
+      sales: sales
     };
   }
 };
