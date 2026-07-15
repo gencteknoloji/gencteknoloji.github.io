@@ -1042,7 +1042,7 @@ export const dbService = {
           ), 0),
           'totalExpenses', COALESCE((
             SELECT SUM(amount) FROM expenses 
-            WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
+            WHERE date >= ? AND date <= ?
           ), 0),
           'netProfit', (
             /* 1. Cihaz Kârı */
@@ -1065,31 +1065,19 @@ export const dbService = {
                 AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
                 AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır')
             ), 0) +
-            /* 3. Tamir / Teknik Servis Net Kârı (Hizmet/Tamir satışı - Teknik Servis gideri) */
-            (
-              COALESCE((
-                SELECT SUM(si.price * si.quantity) 
-                FROM sale_items si 
-                JOIN products p ON si.product_id = p.id
-                JOIN sales s ON si.sale_id = s.id
-                WHERE s.date >= ? AND s.date <= ? 
-                  AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
-              ), 0) -
-              COALESCE((
-                SELECT SUM(amount) 
-                FROM expenses 
-                WHERE date >= ? AND date <= ? AND category = 'Teknik Servis'
-              ), 0)
-            ) -
-            /* 4. Genel Giderler */
+            /* 3. Teknik Servis Geliri */
             COALESCE((
-              SELECT SUM(amount) FROM expenses 
-              WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
+              SELECT SUM(si.price * si.quantity) 
+              FROM sale_items si 
+              JOIN products p ON si.product_id = p.id
+              JOIN sales s ON si.sale_id = s.id
+              WHERE s.date >= ? AND s.date <= ? 
+                AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
             ), 0) -
-            /* 5. Şirket Giderleri */
+            /* 4. Tüm Giderler */
             COALESCE((
               SELECT SUM(amount) FROM expenses 
-              WHERE date >= ? AND date <= ? AND category = 'Şirket Giderleri'
+              WHERE date >= ? AND date <= ?
             ), 0)
           )
         ),
@@ -1106,7 +1094,7 @@ export const dbService = {
     `;
 
     const params = [];
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 9; i++) {
       params.push(startDate, endDate);
     }
 

@@ -4961,12 +4961,12 @@ export default function DashboardHome() {
                         <div className="glass-panel p-4 bg-gradient-to-br from-red-950/20 to-red-900/10 border border-white/5">
                           <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Gider</span>
                           <h3 className="text-lg font-extrabold text-red-400 mt-1 font-mono">-{totalExpenses.toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[9px] text-red-400/80">Genel giderler</span>
+                          <span className="text-[9px] text-red-400/80">Tüm giderler</span>
                         </div>
                         <div className="glass-panel p-4 bg-gradient-to-br from-emerald-950/20 to-emerald-900/10 border border-emerald-500/15">
                           <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider block font-bold">Kar-Zarar</span>
                           <h3 className="text-lg font-extrabold text-emerald-400 mt-1 font-mono">{netProfit.toLocaleString('tr-TR')} TL</h3>
-                          <span className="text-[9px] text-emerald-500/80">Net kâr (Cihaz + Aksesuar + Tamir Net − Genel Gider − Şirket Gideri)</span>
+                          <span className="text-[9px] text-emerald-500/80">Net kâr (Cihaz + Aksesuar + Tamir − Tüm Giderler)</span>
                         </div>
                       </div>
 
