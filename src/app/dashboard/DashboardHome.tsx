@@ -204,6 +204,146 @@ const SIDEBAR_GROUPS: { title: string; items: SidebarNavItem[]; accent?: 'turkce
   },
 ];
 
+const renderLineChart = (data: ChartPoint[], type: 'weekly' | 'monthly') => {
+  if (!data || data.length === 0) {
+    return <div className="text-center py-8 text-secondary text-xs">Veri bulunmamaktadır.</div>;
+  }
+  const maxVal = Math.max(...data.map(x => x.amount)) || 1;
+  
+  // SVG Dimensions
+  const width = 500;
+  const height = 150;
+  const paddingLeft = 20;
+  const paddingRight = 20;
+  const paddingTop = 15;
+  const paddingBottom = 15;
+  
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
+  
+  // Generate points
+  const points = data.map((item, idx) => {
+    const x = paddingLeft + (data.length > 1 ? (idx / (data.length - 1)) * chartWidth : 0);
+    const y = height - paddingBottom - (item.amount / maxVal) * chartHeight;
+    return { x, y, item, idx };
+  });
+  
+  // Create path strings
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = points.length > 0 
+    ? `${linePath} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z` 
+    : '';
+  
+  const strokeColor = type === 'weekly' ? '#818cf8' : '#a78bfa'; // indigo-400 vs violet-400
+  const fillColorId = `grad-${type}`;
+  
+  return (
+    <div className="relative w-full pt-2 pb-6">
+      <div className="h-40 w-full relative">
+        <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" preserveAspectRatio="none" className="overflow-visible">
+          <defs>
+            <linearGradient id={fillColorId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={strokeColor} stopOpacity="0.2" />
+              <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+          
+          {/* Horizontal grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+            const y = paddingTop + ratio * chartHeight;
+            return (
+              <line 
+                key={i} 
+                x1={paddingLeft} 
+                y1={y} 
+                x2={width - paddingRight} 
+                y2={y} 
+                stroke="white" 
+                strokeOpacity="0.05" 
+                strokeDasharray="3 3" 
+              />
+            );
+          })}
+          
+          {/* Area fill */}
+          {areaPath && <path d={areaPath} fill={`url(#${fillColorId})`} />}
+          
+          {/* Line stroke */}
+          {linePath && <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+          
+          {/* Connection circles */}
+          {points.map((p) => (
+            <circle
+              key={p.idx}
+              cx={p.x}
+              cy={p.y}
+              r="4"
+              fill={strokeColor}
+              stroke="#1e1b4b"
+              strokeWidth="1.5"
+              className="transition-all duration-150 pointer-events-none opacity-0"
+              id={`circle-${type}-${p.idx}`}
+              style={{ transition: 'opacity 0.15s ease, r 0.15s ease' }}
+            />
+          ))}
+        </svg>
+        
+        {/* Interactive hover overlay columns */}
+        <div className="absolute inset-0 flex justify-between" style={{ paddingLeft: `${paddingLeft}px`, paddingRight: `${paddingRight}px` }}>
+          {points.map((p) => {
+            const label = type === 'weekly' ? p.item.date : (p.item.date || `${p.item.day}. Gün`);
+            const heightPct = (p.item.amount / maxVal) * 85;
+            
+            return (
+              <div 
+                key={p.idx} 
+                className="flex-1 flex flex-col items-center justify-end relative group cursor-pointer"
+                onMouseEnter={() => {
+                  const circle = document.getElementById(`circle-${type}-${p.idx}`);
+                  if (circle) {
+                    circle.setAttribute('r', '6');
+                    circle.style.opacity = '1';
+                  }
+                }}
+                onMouseLeave={() => {
+                  const circle = document.getElementById(`circle-${type}-${p.idx}`);
+                  if (circle) {
+                    circle.setAttribute('r', '4');
+                    circle.style.opacity = '0';
+                  }
+                }}
+              >
+                {/* Tooltip */}
+                <div 
+                  className="absolute opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none bg-slate-950/95 border border-white/10 px-2 py-1 rounded-md shadow-xl text-center z-20 font-mono text-[9px] text-white whitespace-nowrap scale-95 group-hover:scale-100"
+                  style={{ 
+                    bottom: `${Math.min(95, Math.max(12, heightPct + 8))}%`,
+                    left: '50%',
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <div className="font-bold">{p.item.amount.toLocaleString('tr-TR')} TL</div>
+                  <div className="text-[7px] text-slate-400 mt-0.5">{label}</div>
+                </div>
+                
+                {/* Vertical dotted hover line */}
+                <div className="w-[1px] h-full border-l border-dashed border-white/10 opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-0 pointer-events-none"></div>
+                
+                {/* Bottom label */}
+                {(type === 'weekly' || p.idx % 5 === 0 || p.idx === points.length - 1) && (
+                  <span className="text-[9px] text-slate-400 absolute -bottom-6 transform translate-y-1 font-semibold whitespace-nowrap font-sans pointer-events-none">
+                    {label}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function DashboardHome() {
   // Navigation
   const [activeTab, setActiveTab] = useState('sales'); // Default Tab: Satış Kasa
@@ -4627,49 +4767,13 @@ export default function DashboardHome() {
                         {/* Weekly sales chart */}
                         <div className="glass-panel p-5">
                           <h4 className="font-bold text-white text-sm mb-4">Haftalık Satış Analizi (Son 7 Gün)</h4>
-                          
-                          <div className="h-44 w-full flex items-end justify-between gap-2 px-2 pb-4 pt-2 border-b border-white/5 relative">
-                            {weeklyChart.map((item, idx) => {
-                              const maxVal = Math.max(...weeklyChart.map(x => x.amount)) || 1;
-                              const heightPct = (item.amount / maxVal) * 85;
-                              return (
-                                <div key={idx} className="flex flex-col items-center flex-1 group">
-                                  <span className="text-[9px] text-indigo-400 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
-                                    {item.amount.toLocaleString('tr-TR')} TL
-                                  </span>
-                                  <div 
-                                    style={{ height: `${Math.max(5, heightPct)}%` }} 
-                                    className="w-full bg-gradient-to-t from-indigo-600/70 to-indigo-400 rounded-t transition-all duration-300 hover:brightness-110"
-                                  ></div>
-                                  <span className="text-[10px] text-secondary mt-2">{item.date}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          {renderLineChart(weeklyChart, 'weekly')}
                         </div>
 
                         {/* Monthly chart */}
                         <div className="glass-panel p-5">
                           <h4 className="font-bold text-white text-sm mb-4">Aylık Satış Analizi (Son Ay)</h4>
-                          
-                          <div className="h-44 w-full flex items-end justify-between gap-2 px-2 pb-4 pt-2 border-b border-white/5 relative">
-                            {monthlyChart.map((item, idx) => {
-                              const maxVal = Math.max(...monthlyChart.map(x => x.amount)) || 1;
-                              const heightPct = (item.amount / maxVal) * 85;
-                              return (
-                                <div key={idx} className="flex flex-col items-center flex-1 group">
-                                  <span className="text-[9px] text-indigo-400 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
-                                    {item.amount.toLocaleString('tr-TR')} TL
-                                  </span>
-                                  <div 
-                                    style={{ height: `${Math.max(5, heightPct)}%` }} 
-                                    className="w-full bg-gradient-to-t from-violet-600/70 to-violet-400 rounded-t transition-all duration-300 hover:brightness-110"
-                                  ></div>
-                                  <span className="text-[10px] text-secondary mt-2">{item.day}. Gün</span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          {renderLineChart(monthlyChart, 'monthly')}
                         </div>
                       </div>
 

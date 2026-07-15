@@ -573,7 +573,7 @@ export const dbService = {
         WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
       `),
       db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [sevenDaysAgoStr]),
-      db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? AND date <= ? GROUP BY date', [startOfMonth, endOfMonth])
+      db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [thirtyDaysAgoStr])
     ]);
 
     // Map weekly chart in memory
@@ -585,6 +585,7 @@ export const dbService = {
     const weeklyChart: ChartPoint[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
+      d.setHours(12, 0, 0, 0);
       d.setDate(d.getDate() - i);
       const dStr = d.toLocaleDateString('sv-SE');
       weeklyChart.push({
@@ -600,11 +601,13 @@ export const dbService = {
     });
 
     const monthlyChart: ChartPoint[] = [];
-    for (let d = 1; d <= now.getDate(); d++) {
-      const dObj = new Date(now.getFullYear(), now.getMonth(), d);
+    for (let i = 29; i >= 0; i--) {
+      const dObj = new Date();
+      dObj.setHours(12, 0, 0, 0);
+      dObj.setDate(dObj.getDate() - i);
       const dStr = dObj.toLocaleDateString('sv-SE');
       monthlyChart.push({
-        day: d,
+        date: dObj.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
         amount: monthMap[dStr] || 0
       });
     }
@@ -866,7 +869,7 @@ export const dbService = {
         ), '[]'::json),
         'monthlySalesRaw', COALESCE((
           SELECT json_agg(t) FROM (
-            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? AND date <= ? GROUP BY date
+            SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date
           ) t
         ), '[]'::json)
       ) as payload
@@ -877,8 +880,7 @@ export const dbService = {
       sevenDaysAgoStr,
       thirtyDaysAgoStr,
       sevenDaysAgoStr,
-      startOfMonth,
-      endOfMonth
+      thirtyDaysAgoStr
     ]);
     
     const payload = res?.payload || {
@@ -917,6 +919,7 @@ export const dbService = {
     const weeklyChart: ChartPoint[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
+      d.setHours(12, 0, 0, 0);
       d.setDate(d.getDate() - i);
       const dStr = d.toLocaleDateString('sv-SE');
       weeklyChart.push({
@@ -934,11 +937,13 @@ export const dbService = {
     });
 
     const monthlyChart: ChartPoint[] = [];
-    for (let d = 1; d <= now.getDate(); d++) {
-      const dObj = new Date(now.getFullYear(), now.getMonth(), d);
+    for (let i = 29; i >= 0; i--) {
+      const dObj = new Date();
+      dObj.setHours(12, 0, 0, 0);
+      dObj.setDate(dObj.getDate() - i);
       const dStr = dObj.toLocaleDateString('sv-SE');
       monthlyChart.push({
-        day: d,
+        date: dObj.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
         amount: monthMap[dStr] || 0
       });
     }
