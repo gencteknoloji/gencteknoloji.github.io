@@ -828,9 +828,8 @@ export default function DashboardHome() {
         const limitDate = new Date();
         limitDate.setDate(today.getDate() - 7);
         startDateStr = limitDate.toLocaleDateString('sv-SE');
-      } else if (reportFilterRange === '30days') {
-        const limitDate = new Date();
-        limitDate.setDate(today.getDate() - 30);
+      } else if (reportFilterRange === 'this_month') {
+        const limitDate = new Date(today.getFullYear(), today.getMonth(), 1);
         startDateStr = limitDate.toLocaleDateString('sv-SE');
       } else if (reportFilterRange === 'custom') {
         startDateStr = reportCustomStart;
@@ -4807,7 +4806,7 @@ export default function DashboardHome() {
                         <option value="today" className="bg-neutral-900 text-white">Bugün</option>
                         <option value="yesterday" className="bg-neutral-900 text-white">Dün</option>
                         <option value="7days" className="bg-neutral-900 text-white">Son 7 Gün</option>
-                        <option value="30days" className="bg-neutral-900 text-white">Son 30 Gün</option>
+                        <option value="this_month" className="bg-neutral-900 text-white">Bu Ay</option>
                         <option value="custom" className="bg-neutral-900 text-white">Tarih Aralığı</option>
                       </select>
                     </div>
