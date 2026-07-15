@@ -2789,93 +2789,49 @@ export default function DashboardHome() {
                         </div>
                       </div>
 
-                      {/* Sold Products Grid / Tables */}
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Bugün Satılan Ürünler */}
-                        <div className="lg:col-span-2 glass-panel p-0 overflow-hidden flex flex-col">
-                          <div className="p-4 border-b border-white/5 bg-white/2 flex items-center justify-between">
-                            <h4 className="font-bold text-white text-xs">Bugün Satılan Ürün Listesi ({soldProductsList.length} Çeşit)</h4>
-                            <span className="text-[10px] text-indigo-400 font-semibold font-mono">Özet Rapor</span>
-                          </div>
-
-                          <div className="overflow-x-auto flex-1">
-                            {soldProductsList.length === 0 ? (
-                              <div className="p-8 text-center text-secondary text-xs">
-                                Bugün henüz bir ürün satışı yapılmadı.
-                              </div>
-                            ) : (
-                              <table className="w-full text-left text-xs border-collapse">
-                                <thead>
-                                  <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
-                                    <th className="p-3 pl-4">Sıra</th>
-                                    <th className="p-3">Ürün / Hizmet Adı</th>
-                                    <th className="p-3 text-center">Adet</th>
-                                    <th className="p-3 text-right">Ortalama Birim Fiyat</th>
-                                    <th className="p-3 text-right pr-4">Toplam Tutar</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                  {soldProductsList.map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
-                                      <td className="p-3 pl-4 font-mono text-secondary">{idx + 1}</td>
-                                      <td className="p-3 font-semibold text-white">{item.name}</td>
-                                      <td className="p-3 text-center font-bold text-indigo-400 font-mono">{item.quantity}</td>
-                                      <td className="p-3 text-right font-mono text-secondary">
-                                        {(item.total / item.quantity).toLocaleString('tr-TR')} TL
-                                      </td>
-                                      <td className="p-3 text-right pr-4 font-mono font-semibold text-emerald-400">
-                                        {item.total.toLocaleString('tr-TR')} TL
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            )}
-                          </div>
+                      {/* Sold Products List (Full Width) */}
+                      <div className="glass-panel p-0 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-white/5 bg-white/2 flex items-center justify-between">
+                          <h4 className="font-bold text-white text-xs">Bugün Satılan Ürün Listesi ({soldProductsList.length} Çeşit)</h4>
+                          <span className="text-[10px] text-indigo-400 font-semibold font-mono">Özet Rapor</span>
                         </div>
 
-                        {/* Günlük Fişler / İşlem Listesi */}
-                        <div className="glass-panel p-0 overflow-hidden flex flex-col">
-                          <div className="p-4 border-b border-white/5 bg-white/2 flex items-center justify-between">
-                            <h4 className="font-bold text-white text-xs">Bugünkü Fişler ({todaySales.length} Fiş)</h4>
-                            <span className="text-[10px] text-amber-400 font-semibold font-mono">Bugün</span>
-                          </div>
-
-                          <div className="overflow-y-auto max-h-[450px]">
-                            {todaySales.length === 0 ? (
-                              <div className="p-8 text-center text-secondary text-xs">
-                                Bugün henüz fiş kaydı bulunmamaktadır.
-                              </div>
-                            ) : (
-                              <div className="divide-y divide-white/5">
-                                {todaySales.map((sale, idx) => (
-                                  <div key={sale.id || idx} className="p-3.5 hover:bg-white/[0.01] transition-colors flex flex-col gap-1 text-xs">
-                                    <div className="flex justify-between items-center">
-                                      <span className="font-bold text-white truncate max-w-[180px]">
-                                        {sale.cari_id === 'pesin' ? 'Peşin Müşteri' : (sale.cari_name || 'Cari Müşteri')}
-                                      </span>
-                                      <span className="font-mono text-emerald-400 font-semibold">
-                                        {toNum(sale.total_amount || 0).toLocaleString('tr-TR')} TL
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[10px] text-secondary">
-                                      <span className="flex items-center gap-1 font-mono">
-                                        {sale.id.replace('s_', '')} | {sale.payment_method}
-                                      </span>
-                                      <span className="font-mono">{sale.date}</span>
-                                    </div>
-                                    {sale.items && (
-                                      <div className="text-[9px] text-muted truncate mt-0.5">
-                                        {sale.items.map(item => `${item.name} (${item.quantity} adet)`).join(', ')}
-                                      </div>
-                                    )}
-                                  </div>
+                        <div className="overflow-x-auto">
+                          {soldProductsList.length === 0 ? (
+                            <div className="p-8 text-center text-secondary text-xs">
+                              Bugün henüz bir ürün satışı yapılmadı.
+                            </div>
+                          ) : (
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
+                                  <th className="p-3 pl-4">Sıra</th>
+                                  <th className="p-3">Ürün / Hizmet Adı</th>
+                                  <th className="p-3 text-center">Adet</th>
+                                  <th className="p-3 text-right">Ortalama Birim Fiyat</th>
+                                  <th className="p-3 text-right pr-4">Toplam Tutar</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {soldProductsList.map((item, idx) => (
+                                  <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
+                                    <td className="p-3 pl-4 font-mono text-secondary">{idx + 1}</td>
+                                    <td className="p-3 font-semibold text-white">{item.name}</td>
+                                    <td className="p-3 text-center font-bold text-indigo-400 font-mono">{item.quantity}</td>
+                                    <td className="p-3 text-right font-mono text-secondary">
+                                      {(item.total / item.quantity).toLocaleString('tr-TR')} TL
+                                    </td>
+                                    <td className="p-3 text-right pr-4 font-mono font-semibold text-emerald-400">
+                                      {item.total.toLocaleString('tr-TR')} TL
+                                    </td>
+                                  </tr>
                                 ))}
-                              </div>
-                            )}
-                          </div>
+                              </tbody>
+                            </table>
+                          )}
                         </div>
                       </div>
+
                       {/* Geçmiş Gün Sonu Raporları Listesi */}
                       <div className="glass-panel p-0 overflow-hidden flex flex-col mt-6">
                         <div className="p-4 border-b border-white/5 bg-white/2 flex items-center justify-between">
@@ -2903,12 +2859,8 @@ export default function DashboardHome() {
                                 {dailyClosingsList.slice((pageDailyClosings - 1) * 10, pageDailyClosings * 10).map((closing) => {
                                   const cDiff = toNum(closing.cash_diff) || 0;
                                   const pDiff = toNum(closing.card_diff) || 0;
-                                  const expectedCash = toNum(closing.expected_cash) || 0;
-                                  const physicalCash = toNum(closing.physical_cash) || 0;
-                                  const expectedPos = toNum(closing.card_revenue) || 0;
-                                  const physicalPos = toNum(closing.physical_card) || 0;
-                                  const totalExpected = expectedCash + expectedPos;
-                                  const totalPhysical = physicalCash + physicalPos;
+                                  const physicalCashValue = toNum(closing.physical_cash) || 0;
+                                  const physicalPosValue = toNum(closing.physical_card) || 0;
                                   const totalDiff = cDiff + pDiff;
 
                                   const formatDiff = (diff: number) =>
@@ -2917,34 +2869,15 @@ export default function DashboardHome() {
                                   const diffClass = (diff: number) =>
                                     diff === 0 ? 'text-emerald-400' : diff > 0 ? 'text-emerald-400' : 'text-red-400';
 
-                                  const stackedCell = (
-                                    expected: number,
-                                    physical: number,
-                                    diff: number,
-                                  ) => (
-                                    <div className="flex flex-col gap-1 font-mono text-[10px] leading-tight">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-secondary shrink-0">Beklenen</span>
-                                        <span className="text-secondary">{expected.toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-white/70 shrink-0">Eldeki</span>
-                                        <span className="text-white">{physical.toLocaleString('tr-TR')} TL</span>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-3 pt-0.5 border-t border-white/5">
-                                        <span className="text-secondary shrink-0">Fark</span>
-                                        <span className={`font-bold ${diffClass(diff)}`}>{formatDiff(diff)} TL</span>
-                                      </div>
-                                    </div>
-                                  );
-                                  
                                   return (
                                     <tr key={closing.id} className="hover:bg-white/[0.01] transition-colors">
-                                      <td className="p-3 pl-4 font-mono font-bold text-white align-top">{closing.date}</td>
-                                      <td className="p-3 text-right align-top">{stackedCell(expectedCash, physicalCash, cDiff)}</td>
-                                      <td className="p-3 text-right align-top">{stackedCell(expectedPos, physicalPos, pDiff)}</td>
-                                      <td className="p-3 text-right align-top">{stackedCell(totalExpected, totalPhysical, totalDiff)}</td>
-                                      <td className="p-3 text-center pr-4 align-top">
+                                      <td className="p-3 pl-4 font-mono font-bold text-white">{closing.date}</td>
+                                      <td className="p-3 text-right font-mono font-semibold text-white">{physicalCashValue.toLocaleString('tr-TR')} TL</td>
+                                      <td className="p-3 text-right font-mono font-semibold text-white">{physicalPosValue.toLocaleString('tr-TR')} TL</td>
+                                      <td className={`p-3 text-right font-mono font-bold ${diffClass(totalDiff)}`}>
+                                        {formatDiff(totalDiff)} TL
+                                      </td>
+                                      <td className="p-3 text-center pr-4">
                                         <button
                                           onClick={() => handleOpenEditClosingModal(closing)}
                                           className="px-2.5 py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-[10px] text-indigo-400 border border-indigo-500/20 font-semibold cursor-pointer transition-all"
