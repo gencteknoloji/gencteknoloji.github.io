@@ -1034,13 +1034,18 @@ export const dbService = {
             FROM sale_items si 
             JOIN products p ON si.product_id = p.id
             JOIN sales s ON si.sale_id = s.id
-            WHERE s.date >= ? AND s.date <= ? AND p.type != 'Cihaz' AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
+            WHERE s.date >= ? AND s.date <= ? 
+              AND p.type != 'Cihaz' 
+              AND p.type != 'Hizmet' 
+              AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
+              AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır')
           ), 0),
-           'totalExpenses', COALESCE((
+          'totalExpenses', COALESCE((
             SELECT SUM(amount) FROM expenses 
             WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
           ), 0),
           'netProfit', (
+            /* 1. Cihaz Kârı */
             COALESCE((
               SELECT SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) 
               FROM sale_items si 
@@ -1048,13 +1053,35 @@ export const dbService = {
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? AND p.type = 'Cihaz'
             ), 0) +
+            /* 2. Aksesuar Kârı (Hizmet/Tamir Hariç) */
             COALESCE((
               SELECT SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) 
               FROM sale_items si 
               JOIN products p ON si.product_id = p.id
               JOIN sales s ON si.sale_id = s.id
-              WHERE s.date >= ? AND s.date <= ? AND p.type != 'Cihaz' AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
-            ), 0) -
+              WHERE s.date >= ? AND s.date <= ? 
+                AND p.type != 'Cihaz' 
+                AND p.type != 'Hizmet' 
+                AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
+                AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır')
+            ), 0) +
+            /* 3. Tamir / Teknik Servis Net Kârı (Hizmet/Tamir satışı - Teknik Servis gideri) */
+            (
+              COALESCE((
+                SELECT SUM(si.price * si.quantity) 
+                FROM sale_items si 
+                JOIN products p ON si.product_id = p.id
+                JOIN sales s ON si.sale_id = s.id
+                WHERE s.date >= ? AND s.date <= ? 
+                  AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
+              ), 0) -
+              COALESCE((
+                SELECT SUM(amount) 
+                FROM expenses 
+                WHERE date >= ? AND date <= ? AND category = 'Teknik Servis'
+              ), 0)
+            ) -
+            /* 4. Genel Giderler */
             COALESCE((
               SELECT SUM(amount) FROM expenses 
               WHERE date >= ? AND date <= ? AND (category = 'Genel Gider' OR category IS NULL)
@@ -1074,7 +1101,7 @@ export const dbService = {
     `;
 
     const params = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       params.push(startDate, endDate);
     }
 
