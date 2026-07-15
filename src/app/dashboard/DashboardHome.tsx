@@ -2133,7 +2133,15 @@ export default function DashboardHome() {
                     
                     {/* Hızlı Kartlar */}
                     {(() => {
-                      const quickProducts = products.filter(p => (p.type === 'Hizmet' || p.category === 'Aksesuar' || p.category === 'Şarj' || p.category === 'Kılıf' || p.category === 'Cam') && p.sale_price > 0).slice(0, 10);
+                      const quickProducts = products.filter(p => (
+                        p.type === 'Hizmet' || 
+                        p.category === 'Aksesuar' || 
+                        p.category === 'Telefon Kılıfı' || 
+                        p.category === 'Telefon Kırılmaz Camı' || 
+                        p.category === 'Şarj Cihazı' || 
+                        p.category === 'Şarj Kablosu' ||
+                        p.category === 'Bluetooth Kulaklık'
+                      ) && p.sale_price > 0).slice(0, 10);
                       const popularProducts = quickProducts.length > 0 ? quickProducts : products.filter(p => p.sale_price > 0).slice(0, 10);
                       
                       return popularProducts.length > 0 && (

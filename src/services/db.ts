@@ -841,6 +841,15 @@ export const dbService = {
         'expenses', COALESCE((SELECT json_agg(e) FROM (SELECT * FROM expenses WHERE date >= ? ORDER BY date DESC, id DESC) e), '[]'::json),
         'turkcell_devices', COALESCE((SELECT json_agg(td) FROM (SELECT * FROM turkcell_devices ORDER BY date_added DESC, id DESC) td), '[]'::json),
         'daily_closings', COALESCE((SELECT json_agg(dc) FROM (SELECT * FROM daily_closings WHERE date >= ? ORDER BY date DESC) dc), '[]'::json),
+        'popular_products', COALESCE((
+          SELECT json_agg(p) FROM (
+            SELECT * FROM products 
+            WHERE sale_price > 0 
+              AND (type = 'Hizmet' OR category IN ('Telefon Kılıfı', 'Telefon Kırılmaz Camı', 'Şarj Cihazı', 'Şarj Kablosu', 'Bluetooth Kulaklık'))
+            ORDER BY stock DESC 
+            LIMIT 15
+          ) p
+        ), '[]'::json),
         'dashboard', json_build_object(
           'todaySales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date = ?), 0),
           'weekSales', COALESCE((SELECT SUM(total_amount) FROM sales WHERE date >= ?), 0),
@@ -960,7 +969,7 @@ export const dbService = {
 
     return {
       cariler: payload.cariler || [],
-      products: [], // Lazy loaded
+      products: payload.popular_products || [], // Popular products loaded initially
       sales: payload.sales || [],
       sale_items: payload.sale_items || [],
       turkcell_premiums: payload.turkcell_premiums || [],
