@@ -572,7 +572,7 @@ export default function DashboardHome() {
   // Breakdown states for accordion (lazy loaded)
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [breakdownData, setBreakdownData] = useState<{
-    salesList: { category: string; total_amount: number }[];
+    salesList: { category: string; total_amount: number; total_profit: number }[];
     expensesList: { category: string; total_amount: number }[];
   } | null>(null);
   const [isBreakdownLoading, setIsBreakdownLoading] = useState(false);
@@ -5024,21 +5024,35 @@ export default function DashboardHome() {
                                   <div className="flex flex-col gap-3">
                                     <h5 className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Gelir Kaynakları (Artılar)</h5>
                                     <div className="flex flex-col gap-2 bg-black/10 p-3.5 rounded-lg border border-white/5">
+                                      {/* Header row */}
+                                      <div className="grid grid-cols-3 text-[10px] text-muted font-semibold uppercase tracking-wider border-b border-white/10 pb-1.5 mb-0.5">
+                                        <span>Kategori</span>
+                                        <span className="text-right">Ciro</span>
+                                        <span className="text-right">Brüt Kâr</span>
+                                      </div>
                                       {breakdownData.salesList.map((item: any, i: number) => {
                                         const displayName = item.category === 'Tamir & Teknik Servis' ? 'Teknik Servis Geliri' : item.category;
+                                        const profit = item.total_profit ?? 0;
+                                        const isProfit = profit >= 0;
                                         return (
-                                          <div key={i} className="flex justify-between items-center text-xs text-secondary border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                                            <span>{displayName}:</span>
-                                            <span className="font-bold text-white font-mono">{item.total_amount.toLocaleString('tr-TR')} TL</span>
+                                          <div key={i} className="grid grid-cols-3 items-center text-xs border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                                            <span className="text-secondary truncate pr-1">{displayName}</span>
+                                            <span className="font-bold text-white font-mono text-right">{item.total_amount.toLocaleString('tr-TR')} TL</span>
+                                            <span className={`font-bold font-mono text-right ${isProfit ? 'text-emerald-400' : 'text-red-400'}`}>
+                                              {isProfit ? '+' : ''}{profit.toLocaleString('tr-TR')} TL
+                                            </span>
                                           </div>
                                         );
                                       })}
                                       {breakdownData.salesList.length === 0 && (
                                         <div className="text-xs text-secondary italic py-2 text-center">Gelir kaydı yok</div>
                                       )}
-                                      <div className="flex justify-between items-center text-xs font-bold text-emerald-400 border-t border-white/10 pt-2 mt-1">
-                                        <span>Toplam Gelir (Ciro):</span>
-                                        <span className="font-mono">{totalSales.toLocaleString('tr-TR')} TL</span>
+                                      <div className="grid grid-cols-3 items-center text-xs font-bold border-t border-white/10 pt-2 mt-1">
+                                        <span className="text-emerald-400">Toplam:</span>
+                                        <span className="text-emerald-400 font-mono text-right">{totalSales.toLocaleString('tr-TR')} TL</span>
+                                        <span className={`font-mono text-right ${breakdownData.salesList.reduce((s: number, it: any) => s + (it.total_profit ?? 0), 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                          {breakdownData.salesList.reduce((s: number, it: any) => s + (it.total_profit ?? 0), 0) >= 0 ? '+' : ''}{breakdownData.salesList.reduce((s: number, it: any) => s + (it.total_profit ?? 0), 0).toLocaleString('tr-TR')} TL
+                                        </span>
                                       </div>
                                     </div>
                                   </div>

@@ -1113,7 +1113,8 @@ export const dbService = {
           WHEN LOWER(TRIM(si.name)) LIKE '%tamir%' OR LOWER(TRIM(si.name)) LIKE '%servis%' THEN 'Teknik Servis Geliri'
           ELSE 'Diğer'
         END as category,
-        SUM(si.price * si.quantity) as total_amount
+        SUM(si.price * si.quantity) as total_amount,
+        SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) as total_profit
       FROM sale_items si
       LEFT JOIN products p ON si.product_id = p.id
       JOIN sales s ON si.sale_id = s.id
@@ -1130,7 +1131,7 @@ export const dbService = {
       ORDER BY total_amount DESC
     `;
 
-    const salesList = await db.all<{ category: string, total_amount: number }>(salesSql, [startDate, endDate]);
+    const salesList = await db.all<{ category: string, total_amount: number, total_profit: number }>(salesSql, [startDate, endDate]);
     const expensesList = await db.all<{ category: string, total_amount: number }>(expensesSql, [startDate, endDate]);
 
     return {
