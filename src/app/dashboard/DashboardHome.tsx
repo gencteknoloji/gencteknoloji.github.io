@@ -1077,7 +1077,7 @@ export default function DashboardHome() {
       const pDate = editingClosing.date;
       const pastSales = sales.filter(s => s.date === pDate);
       const pastExpenses = expensesList
-        .filter(exp => exp.date === pDate)
+        .filter(exp => exp.date === pDate && exp.category !== 'Şirket Giderleri')
         .reduce((sum, exp) => sum + (toNum(exp.amount) || 0), 0);
 
       const cashRev = pastSales
@@ -2430,6 +2430,7 @@ export default function DashboardHome() {
                                 <option value="Kargo">Kargo</option>
                                 <option value="Emanet">Emanet</option>
                                 <option value="Teknik Servis">Teknik Servis</option>
+                                <option value="Şirket Giderleri">Şirket Giderleri (Kasa Harici)</option>
                               </select>
                             </div>
                             <div>
@@ -2464,6 +2465,7 @@ export default function DashboardHome() {
                                           expense.category === 'Kargo' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/10' :
                                           expense.category === 'Emanet' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/10' :
                                           expense.category === 'Teknik Servis' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/10' :
+                                          expense.category === 'Şirket Giderleri' ? 'bg-rose-500/25 text-rose-300 border border-rose-500/15' :
                                           'bg-emerald-500/20 text-emerald-400 border border-emerald-500/10'
                                         }`}>
                                           {expense.category || 'Genel Gider'}
@@ -2620,7 +2622,7 @@ export default function DashboardHome() {
                     .reduce((sum, e) => sum + (toNum(e.amount) || 0), 0);
 
                   const todayOtherExits = expensesList
-                    .filter(e => e.date === todayStr && e.category && e.category !== 'Genel Gider')
+                    .filter(e => e.date === todayStr && e.category && e.category !== 'Genel Gider' && e.category !== 'Şirket Giderleri')
                     .reduce((sum, e) => sum + (toNum(e.amount) || 0), 0);
 
                   // Calculate metrics
