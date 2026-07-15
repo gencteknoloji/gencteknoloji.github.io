@@ -565,9 +565,12 @@ export default function DashboardHome() {
       totalExpenses: number;
       netProfit: number;
     };
-    sales: any[];
+    dates: any[];
   } | null>(null);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+  const [dateSales, setDateSales] = useState<Record<string, any[]>>({});
+  const [dateSalesLoading, setDateSalesLoading] = useState<Record<string, boolean>>({});
+  const [pageReportDates, setPageReportDates] = useState(1);
 
   const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
@@ -716,6 +719,9 @@ export default function DashboardHome() {
       setWeeklyChart(initData.dashboard.weeklyChart);
       setMonthlyChart(initData.dashboard.monthlyChart);
       setServerIp(initData.dashboard.serverIp || 'localhost');
+      if (activeTab === 'reports') {
+        loadAnalysisData();
+      }
     } catch (err: unknown) {
       console.error("Data load error:", err);
     } finally {
@@ -838,12 +844,48 @@ export default function DashboardHome() {
 
       const data = await dbService.getSalesAnalysis(startDateStr, endDateStr);
       setAnalysisData(data);
+
+      // Refresh any open dates in the background
+      const openDates = Object.keys(expandedDates).filter(d => expandedDates[d]);
+      for (const d of openDates) {
+        dbService.getSalesByDate(d).then(sales => {
+          setDateSales(prev => ({ ...prev, [d]: sales }));
+        }).catch(err => console.error("Error refreshing date sales:", err));
+      }
     } catch (err) {
       console.error("Load analysis error:", err);
     } finally {
       setIsAnalysisLoading(false);
     }
   };
+
+  const toggleDateExpand = async (dateStr: string) => {
+    const isCurrentlyExpanded = expandedDates[dateStr] ?? false;
+    const newExpandedState = !isCurrentlyExpanded;
+    
+    setExpandedDates(prev => ({
+      ...prev,
+      [dateStr]: newExpandedState
+    }));
+
+    if (newExpandedState && !dateSales[dateStr]) {
+      setDateSalesLoading(prev => ({ ...prev, [dateStr]: true }));
+      try {
+        const sales = await dbService.getSalesByDate(dateStr);
+        setDateSales(prev => ({ ...prev, [dateStr]: sales }));
+      } catch (err) {
+        console.error("Load sales by date error:", err);
+      } finally {
+        setDateSalesLoading(prev => ({ ...prev, [dateStr]: false }));
+      }
+    }
+  };
+
+  useEffect(() => {
+    setPageReportDates(1);
+    setExpandedDates({});
+    setDateSales({});
+  }, [reportFilterRange, reportCustomStart, reportCustomEnd]);
 
   useEffect(() => {
     loadAnalysisData();
@@ -4837,7 +4879,7 @@ export default function DashboardHome() {
                 ) : !analysisData ? (
                   <div className="glass-panel p-12 text-center text-secondary text-xs">Seçilen döneme ait veri bulunamadı.</div>
                 ) : (() => {
-                  const { summary, sales: periodSales } = analysisData;
+                  const { summary, dates: periodDates } = analysisData;
                   const totalSales = summary.totalSales || 0;
                   const aksesuarSales = summary.aksesuarSales || 0;
                   const cihazSales = summary.cihazSales || 0;
@@ -4879,146 +4921,162 @@ export default function DashboardHome() {
                       <div>
                         <h3 className="text-sm font-bold text-white mb-4">Dönem Satış Geçmişi</h3>
                         
-                        {periodSales.length === 0 ? (
+                        {!periodDates || periodDates.length === 0 ? (
                           <div className="glass-panel p-8 text-center text-secondary text-xs">
                             Seçilen dönemde yapılmış bir satış kaydı bulunmamaktadır.
                           </div>
                         ) : (() => {
-                          const groupedSales = {};
-                          periodSales.forEach((sale) => {
-                            const d = sale.date;
-                            if (!groupedSales[d]) groupedSales[d] = [];
-                            groupedSales[d].push(sale);
-                          });
-
-                          const sortedDates = Object.keys(groupedSales).sort((a, b) => b.localeCompare(a));
+                          const sortedDates = (periodDates || []).map(d => d.date).sort((a, b) => b.localeCompare(a));
+                          const datesPageSize = 10;
+                          const slicedDates = sortedDates.slice((pageReportDates - 1) * datesPageSize, pageReportDates * datesPageSize);
 
                           return (
                             <div className="flex flex-col gap-4">
-                              {sortedDates.map((dateStr, index) => {
-                                const daySales = groupedSales[dateStr];
-                                const dayTotal = daySales.reduce((sum, s) => sum + s.total_amount, 0);
-                                const dayCount = daySales.length;
+                              <div className="flex flex-col gap-4">
+                                {slicedDates.map((dateStr) => {
+                                  const dateInfo = periodDates.find(d => d.date === dateStr);
+                                  const dayTotal = dateInfo ? dateInfo.total_amount : 0;
+                                  const dayCount = dateInfo ? dateInfo.count : 0;
 
-                                let formattedDate = dateStr;
-                                try {
-                                  const dObj = new Date(dateStr + 'T00:00:00');
-                                  formattedDate = dObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
-                                } catch(e) {}
+                                  let formattedDate = dateStr;
+                                  try {
+                                    const dObj = new Date(dateStr + 'T00:00:00');
+                                    formattedDate = dObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+                                  } catch(e) {}
 
-                                const isExpanded = expandedDates[dateStr] !== undefined ? expandedDates[dateStr] : (index === 0);
+                                  const isExpanded = expandedDates[dateStr] ?? false;
+                                  const daySales = dateSales[dateStr];
+                                  const isDayLoading = dateSalesLoading[dateStr] ?? false;
 
-                                return (
-                                  <div key={dateStr} className="glass-panel p-0 overflow-hidden border border-indigo-500/10 shadow-lg animate-fade-in">
-                                    <button 
-                                      onClick={() => {
-                                        const isCurrentlyExpanded = expandedDates[dateStr] !== undefined ? expandedDates[dateStr] : (index === 0);
-                                        setExpandedDates(prev => ({
-                                          ...prev,
-                                          [dateStr]: !isCurrentlyExpanded
-                                        }));
-                                      }}
-                                      className="w-full flex items-center justify-between p-3.5 bg-indigo-950/15 hover:bg-indigo-900/20 transition-colors border-b border-white/5 cursor-pointer text-left"
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded bg-indigo-500/10 text-indigo-400">
-                                          {isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />}
-                                        </div>
-                                        <div>
-                                          <h3 className="font-bold text-white text-xs">{formattedDate}</h3>
-                                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-[10px] text-secondary font-sans">
-                                            <span>{dayCount} Satış İşlemi</span>
-                                            <span>•</span>
-                                            <span className="font-semibold text-emerald-400 font-mono">Toplam Ciro: {dayTotal.toLocaleString('tr-TR')} TL</span>
+                                  return (
+                                    <div key={dateStr} className="glass-panel p-0 overflow-hidden border border-indigo-500/10 shadow-lg animate-fade-in">
+                                      <button 
+                                        onClick={() => toggleDateExpand(dateStr)}
+                                        className="w-full flex items-center justify-between p-3.5 bg-indigo-950/15 hover:bg-indigo-900/20 transition-colors border-b border-white/5 cursor-pointer text-left"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className="p-2 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                                            {isDayLoading ? (
+                                              <span className="animate-spin text-indigo-400 text-xs">⌛</span>
+                                            ) : isExpanded ? (
+                                              <FolderOpen size={16} />
+                                            ) : (
+                                              <Folder size={16} />
+                                            )}
+                                          </div>
+                                          <div>
+                                            <h3 className="font-bold text-white text-xs">{formattedDate}</h3>
+                                            <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-[10px] text-secondary font-sans">
+                                              <span>{dayCount} Satış İşlemi</span>
+                                              <span>•</span>
+                                              <span className="font-semibold text-emerald-400 font-mono">Toplam Ciro: {dayTotal.toLocaleString('tr-TR')} TL</span>
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="flex items-center gap-4 text-secondary">
-                                        <div className="hidden lg:flex gap-3 text-[10px] text-muted font-mono mr-2">
-                                          <span>Nakit: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Nakit').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
-                                          <span>Kart: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Kredi Kartı').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
-                                          <span>Cari: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Cari (Borç)').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
+                                        <div className="flex items-center gap-4 text-secondary">
+                                          <div className="hidden lg:flex gap-3 text-[10px] text-muted font-mono mr-2">
+                                            {daySales ? (
+                                              <>
+                                                <span>Nakit: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Nakit').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
+                                                <span>Kart: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Kredi Kartı').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
+                                                <span>Cari: <strong className="text-white">{daySales.filter(s => s.payment_method === 'Cari (Borç)').reduce((sum, s) => sum + s.total_amount, 0).toLocaleString('tr-TR')} TL</strong></span>
+                                              </>
+                                            ) : (
+                                              <span className="text-secondary/70">Detayları yüklemek için tıklayın</span>
+                                            )}
+                                          </div>
+                                          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                         </div>
-                                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                      </div>
-                                    </button>
+                                      </button>
 
-                                    {isExpanded && (
-                                      <div className="divide-y divide-white/5 bg-black/10">
-                                        {daySales.map((sale) => (
-                                          <div key={sale.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs hover:bg-white/1 transition-colors">
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-                                                <span className="font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded text-[10px]">
-                                                  Fatura No: {sale.id}
-                                                </span>
-                                                <span className={`badge ${sale.payment_method === 'Cari (Borç)' ? 'badge-danger' : 'badge-success'} rounded px-2 py-0.5 text-[9px] font-bold`}>
-                                                  {sale.payment_method}
-                                                </span>
-                                                <span className="text-secondary font-mono text-[10px]">
-                                                  Müşteri: <strong className="text-white">{customers.find(c => c.id === sale.cari_id)?.name || 'Peşin Satış'}</strong>
-                                                </span>
-                                              </div>
-                                              
-                                              {/* Items list */}
-                                              <div className="flex flex-col gap-2 mt-2 bg-black/15 p-3 rounded-lg border border-white/5 max-w-2xl font-sans">
-                                                {sale.items?.map((item, idx) => (
-                                                  <div key={idx} className="flex justify-between items-center text-[11px] text-secondary border-b border-white/5 last:border-b-0 pb-1.5 last:pb-0">
-                                                    <div className="flex flex-col gap-0.5 min-w-0 pr-4">
-                                                      <span className="font-semibold text-white truncate max-w-[280px] sm:max-w-md">• {item.name}</span>
-                                                      <span className="text-[10px] text-secondary font-mono">Birim: {item.price.toLocaleString('tr-TR')} TL x {item.quantity}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 shrink-0">
-                                                      <span className="font-mono text-white font-bold">{(item.price * item.quantity).toLocaleString('tr-TR')} TL</span>
-                                                      <div className="flex items-center gap-1.5 ml-2">
-                                                        <button 
-                                                          onClick={() => handleOpenEditSaleItem(sale.id, item)}
-                                                          title="Ürünü Düzenle"
-                                                          className="p-1 rounded hover:bg-indigo-500/10 text-secondary hover:text-indigo-400 cursor-pointer transition-colors"
-                                                        >
-                                                          <Edit2 size={12} />
-                                                        </button>
-                                                        <button 
-                                                          onClick={() => handleDeleteSaleItem(sale.id, item)}
-                                                          title="Ürünü Sil"
-                                                          className="p-1 rounded hover:bg-red-500/10 text-secondary hover:text-red-400 cursor-pointer transition-colors"
-                                                        >
-                                                          <Trash2 size={12} />
-                                                        </button>
-                                                      </div>
-                                                    </div>
+                                      {isExpanded && (
+                                        <div className="divide-y divide-white/5 bg-black/10">
+                                          {isDayLoading ? (
+                                            <div className="p-6 text-center text-secondary text-xs">Satış verileri yükleniyor...</div>
+                                          ) : !daySales || daySales.length === 0 ? (
+                                            <div className="p-4 text-center text-secondary text-xs">Kayıt bulunamadı.</div>
+                                          ) : (
+                                            daySales.map((sale) => (
+                                              <div key={sale.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs hover:bg-white/1 transition-colors">
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                                                    <span className="font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded text-[10px]">
+                                                      Fatura No: {sale.id}
+                                                    </span>
+                                                    <span className={`badge ${sale.payment_method === 'Cari (Borç)' ? 'badge-danger' : 'badge-success'} rounded px-2 py-0.5 text-[9px] font-bold`}>
+                                                      {sale.payment_method}
+                                                    </span>
+                                                    <span className="text-secondary font-mono text-[10px]">
+                                                      Müşteri: <strong className="text-white">{customers.find(c => c.id === sale.cari_id)?.name || 'Peşin Satış'}</strong>
+                                                    </span>
                                                   </div>
-                                                ))}
-                                              </div>
-                                              
-                                              {sale.notes && (
-                                                <div className="text-[10px] text-muted mt-2 block font-sans">
-                                                  Not: {sale.notes}
+                                                  
+                                                  {/* Items list */}
+                                                  <div className="flex flex-col gap-2 mt-2 bg-black/15 p-3 rounded-lg border border-white/5 max-w-2xl font-sans">
+                                                    {sale.items?.map((item, idx) => (
+                                                      <div key={idx} className="flex justify-between items-center text-[11px] text-secondary border-b border-white/5 last:border-b-0 pb-1.5 last:pb-0">
+                                                        <div className="flex flex-col gap-0.5 min-w-0 pr-4">
+                                                          <span className="font-semibold text-white truncate max-w-[280px] sm:max-w-md">• {item.name}</span>
+                                                          <span className="text-[10px] text-secondary font-mono">Birim: {item.price.toLocaleString('tr-TR')} TL x {item.quantity}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 shrink-0">
+                                                          <span className="font-mono text-white font-bold">{(item.price * item.quantity).toLocaleString('tr-TR')} TL</span>
+                                                          <div className="flex items-center gap-1.5 ml-2">
+                                                            <button 
+                                                              onClick={() => handleOpenEditSaleItem(sale.id, item)}
+                                                              title="Ürünü Düzenle"
+                                                              className="p-1 rounded hover:bg-indigo-500/10 text-secondary hover:text-indigo-400 cursor-pointer transition-colors"
+                                                            >
+                                                              <Edit2 size={12} />
+                                                            </button>
+                                                            <button 
+                                                              onClick={() => handleDeleteSaleItem(sale.id, item)}
+                                                              title="Ürünü Sil"
+                                                              className="p-1 rounded hover:bg-red-500/10 text-secondary hover:text-red-400 cursor-pointer transition-colors"
+                                                            >
+                                                              <Trash2 size={12} />
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                  
+                                                  {sale.notes && (
+                                                    <div className="text-[10px] text-muted mt-2 block font-sans">
+                                                      Not: {sale.notes}
+                                                    </div>
+                                                  )}
                                                 </div>
-                                              )}
-                                            </div>
 
-                                            <div className="flex items-end md:items-center gap-4 shrink-0 justify-between md:justify-end border-t border-white/5 md:border-t-0 pt-3 md:pt-0">
-                                              <div className="text-right">
-                                                <span className="text-[10px] text-muted block font-sans">Toplam Tutar</span>
-                                                <span className="text-sm font-extrabold text-white font-mono">{sale.total_amount.toLocaleString('tr-TR')} TL</span>
+                                                <div className="flex items-end md:items-center gap-4 shrink-0 justify-between md:justify-end border-t border-white/5 md:border-t-0 pt-3 md:pt-0">
+                                                  <div className="text-right">
+                                                    <span className="text-[10px] text-muted block font-sans">Toplam Tutar</span>
+                                                    <span className="text-sm font-extrabold text-white font-mono">{sale.total_amount.toLocaleString('tr-TR')} TL</span>
+                                                  </div>
+
+                                                  <button 
+                                                    onClick={() => handleDeleteSale(sale.id)}
+                                                    className="px-3 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-[11px] text-red-400 flex items-center justify-center gap-1 border border-red-500/20 font-semibold cursor-pointer transition-colors"
+                                                  >
+                                                    <Trash2 size={13} />
+                                                    <span>Satışı İptal Et</span>
+                                                  </button>
+                                                </div>
                                               </div>
-
-                                              <button 
-                                                onClick={() => handleDeleteSale(sale.id)}
-                                                className="px-3 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-[11px] text-red-400 flex items-center justify-center gap-1 border border-red-500/20 font-semibold cursor-pointer transition-colors"
-                                              >
-                                                <Trash2 size={13} />
-                                                <span>Satışı İptal Et</span>
-                                              </button>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                                            ))
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {sortedDates.length > datesPageSize && (
+                                <div className="mt-2">
+                                  {renderPagination(pageReportDates, sortedDates.length, setPageReportDates, datesPageSize)}
+                                </div>
+                              )}
                             </div>
                           );
                         })()}

@@ -1052,52 +1052,49 @@ export const dbService = {
             ), 0)
           )
         ),
-        'sales', COALESCE((
+        'dates', COALESCE((
           SELECT json_agg(t) FROM (
-            SELECT * FROM sales WHERE date >= ? AND date <= ? ORDER BY date DESC, id DESC
-          ) t
-        ), '[]'::json),
-        'sale_items', COALESCE((
-          SELECT json_agg(t) FROM (
-            SELECT si.id, si.sale_id, si.product_id, si.quantity, si.price, si.name 
-            FROM sale_items si
-            JOIN sales s ON si.sale_id = s.id
-            WHERE s.date >= ? AND s.date <= ?
+            SELECT date, COUNT(id) as count, SUM(total_amount) as total_amount
+            FROM sales 
+            WHERE date >= ? AND date <= ? 
+            GROUP BY date 
+            ORDER BY date DESC
           ) t
         ), '[]'::json)
       ) as payload
     `;
 
     const params = [];
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 8; i++) {
       params.push(startDate, endDate);
     }
 
     const res = await db.get<{ payload: any }>(sql, params);
-    const payload = res?.payload || {
+    return res?.payload || {
       summary: { totalSales: 0, aksesuarSales: 0, cihazSales: 0, totalExpenses: 0, netProfit: 0 },
-      sales: [],
-      sale_items: []
+      dates: []
     };
+  },
 
-    const sales = payload.sales || [];
-    const sale_items = payload.sale_items || [];
-    
+  async getSalesByDate(dateStr: string): Promise<any[]> {
+    const sales = await db.all<any>('SELECT * FROM sales WHERE date = ? ORDER BY id DESC', [dateStr]);
+    const saleItems = await db.all<any>(
+      `SELECT si.id, si.sale_id, si.product_id, si.quantity, si.price, si.name 
+       FROM sale_items si
+       JOIN sales s ON si.sale_id = s.id
+       WHERE s.date = ?`,
+      [dateStr]
+    );
     const itemsBySaleId: Record<string, any[]> = {};
-    (sale_items || []).forEach((item: any) => {
+    (saleItems || []).forEach((item: any) => {
       if (!itemsBySaleId[item.sale_id]) {
         itemsBySaleId[item.sale_id] = [];
       }
       itemsBySaleId[item.sale_id].push(item);
     });
-
     (sales || []).forEach((s: any) => {
       s.items = itemsBySaleId[s.id] || [];
     });
-
-    return {
-      summary: payload.summary,
-      sales: sales
-    };
+    return sales;
   }
 };
