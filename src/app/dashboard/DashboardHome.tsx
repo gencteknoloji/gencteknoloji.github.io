@@ -632,6 +632,8 @@ export default function DashboardHome() {
   const [showEditSaleItemModal, setShowEditSaleItemModal] = useState(false);
   const [editSaleItemPrice, setEditSaleItemPrice] = useState('');
   const [editSaleItemQuantity, setEditSaleItemQuantity] = useState('');
+  const [editSalePaymentMethod, setEditSalePaymentMethod] = useState('Nakit');
+  const [showDeleteSaleItemConfirm, setShowDeleteSaleItemConfirm] = useState(false);
 
   // TURKCELL STATE
   const [turkcellPremiums, setTurkcellPremiums] = useState<TurkcellPremium[]>([]);
@@ -1784,10 +1786,12 @@ export default function DashboardHome() {
   };
 
   // Open Edit Sale Item Modal
-  const handleOpenEditSaleItem = (saleId, item) => {
+  const handleOpenEditSaleItem = (saleId, item, paymentMethod?: string) => {
     setEditingSaleItem({ saleId, item });
     setEditSaleItemPrice(item.price.toString());
     setEditSaleItemQuantity(item.quantity.toString());
+    setEditSalePaymentMethod(paymentMethod || item.payment_method || 'Nakit');
+    setShowDeleteSaleItemConfirm(false);
     setShowEditSaleItemModal(true);
   };
 
@@ -1801,9 +1805,27 @@ export default function DashboardHome() {
         editingSaleItem.saleId,
         editingSaleItem.item.id,
         toNum(editSaleItemPrice),
-        parseInt(editSaleItemQuantity)
+        parseInt(editSaleItemQuantity),
+        editSalePaymentMethod
       );
       setShowEditSaleItemModal(false);
+      setEditingSaleItem(null);
+      await loadAllData(true);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
+    }
+  };
+
+  // Delete Sale Item from Edit Modal (modal confirm flow)
+  const handleConfirmDeleteSaleItem = async () => {
+    if (!editingSaleItem) return;
+    try {
+      await dbService.deleteSaleItem(
+        editingSaleItem.saleId,
+        editingSaleItem.item.id
+      );
+      setShowEditSaleItemModal(false);
+      setShowDeleteSaleItemConfirm(false);
       setEditingSaleItem(null);
       await loadAllData(true);
     } catch (err: unknown) {
@@ -2715,7 +2737,7 @@ export default function DashboardHome() {
                   const cardDiff = physicalCard !== '' ? (toNum(physicalCard) - cardRevenue) : 0;
 
                   // Aggregate sold products today
-                  const soldProductsMap: Record<string, { name: string; quantity: number; total: number; rawItems: { saleId: any; item: any }[] }> = {};
+                  const soldProductsMap: Record<string, { name: string; quantity: number; total: number; rawItems: { saleId: any; item: any; paymentMethod: string }[] }> = {};
                   todaySales.forEach(s => {
                     if (s.items && Array.isArray(s.items)) {
                       s.items.forEach(item => {
@@ -2732,7 +2754,7 @@ export default function DashboardHome() {
                         }
                         soldProductsMap[name].quantity += qty;
                         soldProductsMap[name].total += qty * price;
-                        soldProductsMap[name].rawItems.push({ saleId: parseInt(s.id as any) || s.id as any, item });
+                        soldProductsMap[name].rawItems.push({ saleId: parseInt(s.id as any) || s.id as any, item, paymentMethod: s.payment_method || 'Nakit' });
                       });
                     }
                   });
@@ -2961,24 +2983,34 @@ export default function DashboardHome() {
                                             className="absolute right-0 top-full mt-1 z-50 min-w-[260px] bg-neutral-900 border border-white/10 rounded-xl shadow-2xl p-2 flex flex-col gap-1"
                                           >
                                             <div className="text-[10px] text-muted font-bold uppercase tracking-wider px-2 py-1 border-b border-white/10 mb-1">
-                                              Satış Kayıtları — {item.name}
+                                              ✏️ {item.name}
                                             </div>
                                             {item.rawItems.map((raw, ri) => (
-                                              <div key={ri} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
-                                                <div className="flex flex-col">
-                                                  <span className="text-[10px] text-white font-mono">
+                                              <div key={ri} className="flex items-center justify-between gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
+                                                <div className="flex flex-col gap-0.5">
+                                                  <span className="text-[10px] text-white font-mono font-bold">
                                                     {toInt(raw.item.quantity, 1)} adet × {toNum(raw.item.price).toLocaleString('tr-TR')} TL
                                                   </span>
-                                                  <span className="text-[9px] text-muted">Fiş #{raw.saleId}</span>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[9px] text-muted">Fiş #{raw.saleId}</span>
+                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                                                      raw.paymentMethod === 'Kart' 
+                                                        ? 'bg-blue-500/20 text-blue-400' 
+                                                        : 'bg-emerald-500/20 text-emerald-400'
+                                                    }`}>
+                                                      {raw.paymentMethod === 'Kart' ? '💳 Kart' : '💵 Nakit'}
+                                                    </span>
+                                                  </div>
                                                 </div>
                                                 <button
                                                   onClick={(e) => {
                                                     e.stopPropagation();
                                                     document.querySelectorAll('[data-sold-dropdown]').forEach((el: any) => { el.style.display = 'none'; });
-                                                    handleOpenEditSaleItem(raw.saleId, raw.item);
+                                                    handleOpenEditSaleItem(raw.saleId, raw.item, raw.paymentMethod);
                                                   }}
-                                                  className="flex-shrink-0 px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/25 text-[10px] text-amber-400 border border-amber-500/20 font-semibold cursor-pointer transition-all"
+                                                  className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/30 text-[10px] text-indigo-300 border border-indigo-500/25 font-semibold cursor-pointer transition-all"
                                                 >
+                                                  <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                                   Düzenle
                                                 </button>
                                               </div>
@@ -6719,72 +6751,163 @@ export default function DashboardHome() {
 
       {/* Edit Satış Kalemi Modal */}
       {showEditSaleItemModal && editingSaleItem && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-sm text-xs">
-          <div className="glass-panel p-6 w-full max-w-md bg-slate-900 border border-white/10 animate-fade-in">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-white">Satış Kalemi Düzenle</h3>
-              <button 
-                onClick={() => { setShowEditSaleItemModal(false); setEditingSaleItem(null); }} 
-                className="text-secondary hover:text-white"
-              >
-                <X size={16} />
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => { setShowEditSaleItemModal(false); setEditingSaleItem(null); setShowDeleteSaleItemConfirm(false); }}>
+          <div className="glass-panel w-full max-w-sm bg-[#0f1118] border border-white/10 rounded-2xl shadow-2xl animate-fade-in overflow-hidden" onClick={e => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/8">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Satış Kalemi Düzenle</h3>
+                  <p className="text-[10px] text-muted">Fiş #{editingSaleItem.saleId}</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowEditSaleItemModal(false); setEditingSaleItem(null); setShowDeleteSaleItemConfirm(false); }} className="text-muted hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5 cursor-pointer">
+                <X size={15} />
               </button>
             </div>
-            
-            <form onSubmit={handleSaveEditSaleItem} className="flex flex-col gap-4">
-              <div>
-                <label className="text-[10px] text-secondary block mb-1 font-semibold uppercase tracking-wider">Ürün Adı</label>
-                <input 
-                  type="text" 
-                  disabled
-                  className="custom-input bg-white/5 opacity-65 cursor-not-allowed"
-                  value={editingSaleItem.item.name}
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-secondary block mb-1 font-semibold uppercase tracking-wider">Adet</label>
-                  <input 
-                    type="number" 
-                    required 
-                    min="1"
-                    placeholder="Adet..." 
-                    className="custom-input font-mono"
-                    value={editSaleItemQuantity}
-                    onChange={(e) => setEditSaleItemQuantity(e.target.value)}
-                  />
+            {/* Delete Confirmation Screen */}
+            {showDeleteSaleItemConfirm ? (
+              <div className="p-5 flex flex-col gap-4">
+                <div className="flex flex-col items-center gap-3 py-3">
+                  <div className="w-12 h-12 rounded-full bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-white mb-1">Bu Satış Kalemini Sil</p>
+                    <p className="text-[11px] text-secondary leading-relaxed">
+                      <span className="font-bold text-white">{editingSaleItem.item.name}</span> ürününü satıştan kaldırmak istediğinize emin misiniz?
+                    </p>
+                    <p className="text-[10px] text-red-400/80 mt-1.5">Bu işlem geri alınamaz. Stok geri yüklenecektir.</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] text-secondary block mb-1 font-semibold uppercase tracking-wider">Birim Satış Fiyatı (TL)</label>
-                  <input 
-                    type="number" 
-                    required 
-                    min="0"
-                    placeholder="Fiyat..." 
-                    className="custom-input font-mono"
-                    value={editSaleItemPrice}
-                    onChange={(e) => setEditSaleItemPrice(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteSaleItemConfirm(false)}
+                    className="py-2.5 rounded-xl text-secondary border border-white/8 hover:bg-white/5 cursor-pointer text-[11px] font-semibold transition-all"
+                  >
+                    Vazgeç
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDeleteSaleItem}
+                    className="py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/35 text-red-400 border border-red-500/25 cursor-pointer text-[11px] font-bold transition-all"
+                  >
+                    Evet, Sil
+                  </button>
                 </div>
               </div>
+            ) : (
+              /* Edit Form */
+              <form onSubmit={handleSaveEditSaleItem} className="p-5 flex flex-col gap-4">
+                {/* Ürün Adı (readonly) */}
+                <div className="px-3.5 py-3 bg-white/4 border border-white/8 rounded-xl">
+                  <p className="text-[9px] text-muted font-semibold uppercase tracking-wider mb-0.5">Ürün / Hizmet</p>
+                  <p className="text-[13px] font-bold text-white">{editingSaleItem.item.name}</p>
+                </div>
 
-              <div className="flex justify-end gap-2 mt-4">
-                <button 
-                  type="button" 
-                  onClick={() => { setShowEditSaleItemModal(false); setEditingSaleItem(null); }}
-                  className="px-4 py-2 rounded-lg text-secondary border border-white/5 hover:bg-white/5 cursor-pointer text-[11px]"
-                >
-                  İptal
-                </button>
-                <button type="submit" className="btn-primary py-2 px-4 cursor-pointer text-[11px]">
-                  Kaydet ve Güncelle
-                </button>
-              </div>
-            </form>
+                {/* Adet + Fiyat */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-secondary block mb-1.5 font-semibold uppercase tracking-wider">Adet</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      placeholder="1"
+                      className="custom-input font-mono text-center text-sm"
+                      value={editSaleItemQuantity}
+                      onChange={(e) => setEditSaleItemQuantity(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-secondary block mb-1.5 font-semibold uppercase tracking-wider">Birim Fiyat (TL)</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="custom-input font-mono text-center text-sm"
+                      value={editSaleItemPrice}
+                      onChange={(e) => setEditSaleItemPrice(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Ödeme Yöntemi Toggle */}
+                <div>
+                  <label className="text-[10px] text-secondary block mb-1.5 font-semibold uppercase tracking-wider">Ödeme Yöntemi</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditSalePaymentMethod('Nakit')}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-[11px] font-bold cursor-pointer transition-all ${
+                        editSalePaymentMethod === 'Nakit'
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                          : 'bg-white/4 border-white/8 text-muted hover:bg-white/8'
+                      }`}
+                    >
+                      <span>💵</span> Nakit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditSalePaymentMethod('Kart')}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-[11px] font-bold cursor-pointer transition-all ${
+                        editSalePaymentMethod === 'Kart'
+                          ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                          : 'bg-white/4 border-white/8 text-muted hover:bg-white/8'
+                      }`}
+                    >
+                      <span>💳</span> Kart
+                    </button>
+                  </div>
+                </div>
+
+                {/* Toplam Özeti */}
+                {editSaleItemPrice && editSaleItemQuantity && (
+                  <div className="px-3.5 py-2.5 bg-indigo-500/8 border border-indigo-500/15 rounded-xl flex items-center justify-between">
+                    <span className="text-[10px] text-indigo-400 font-semibold">Yeni Toplam:</span>
+                    <span className="text-[13px] font-black text-indigo-300 font-mono">
+                      {(toNum(editSaleItemPrice) * parseInt(editSaleItemQuantity || '1')).toLocaleString('tr-TR')} TL
+                    </span>
+                  </div>
+                )}
+
+                {/* Butonlar */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteSaleItemConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 cursor-pointer text-[11px] font-semibold transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                    Sil
+                  </button>
+                  <div className="flex-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowEditSaleItemModal(false); setEditingSaleItem(null); }}
+                      className="flex-1 py-2.5 rounded-xl text-secondary border border-white/8 hover:bg-white/5 cursor-pointer text-[11px] font-semibold transition-all"
+                    >
+                      İptal
+                    </button>
+                    <button type="submit" className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer text-[11px] font-bold transition-all">
+                      Kaydet
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
+
 
       {selectedProductForBarcode && (
         <div className="hidden">

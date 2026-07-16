@@ -344,6 +344,28 @@ export const dbService = {
   },
 
   async deleteSaleItem(saleId: string, itemId: number) {
+    const client = getSupabaseClient();
+    if (client) {
+      // Supabase: delete item directly, then recalculate sale total or delete sale if empty
+      const { error: delErr } = await client.from('sale_items').delete().eq('id', itemId);
+      if (delErr) throw new Error(delErr.message);
+
+      const { data: remaining, error: remErr } = await client
+        .from('sale_items').select('price, quantity').eq('sale_id', saleId);
+      if (remErr) throw new Error(remErr.message);
+
+      if (!remaining || remaining.length === 0) {
+        // No items left → delete the whole sale
+        const { error: saleDelErr } = await client.from('sales').delete().eq('id', saleId);
+        if (saleDelErr) throw new Error(saleDelErr.message);
+      } else {
+        const newTotal = remaining.reduce((s, i) => s + i.price * i.quantity, 0);
+        const { error: saleUpdErr } = await client.from('sales').update({ total_amount: newTotal }).eq('id', saleId);
+        if (saleUpdErr) throw new Error(saleUpdErr.message);
+      }
+      return { success: true };
+    }
+
     await db.run('BEGIN TRANSACTION');
     try {
       const sale = await db.get<Sale>('SELECT * FROM sales WHERE id = ?', [saleId]);
@@ -402,7 +424,32 @@ export const dbService = {
     }
   },
 
-  async updateSaleItem(saleId: string, itemId: number, newPrice: number | string, newQuantity: number | string) {
+  async updateSaleItem(saleId: string, itemId: number, newPrice: number | string, newQuantity: number | string, paymentMethod?: string) {
+    const client = getSupabaseClient();
+    if (client) {
+      // Supabase path: update item price & quantity, then optionally payment_method
+      const { error: itemErr } = await client
+        .from('sale_items')
+        .update({ price: toNum(newPrice) || 0, quantity: toInt(newQuantity) || 1 })
+        .eq('id', itemId);
+      if (itemErr) throw new Error(itemErr.message);
+
+      // Recalculate total
+      const { data: allItems, error: itemsErr } = await client
+        .from('sale_items')
+        .select('price, quantity')
+        .eq('sale_id', saleId);
+      if (itemsErr) throw new Error(itemsErr.message);
+      const newTotal = (allItems || []).reduce((s, i) => s + i.price * i.quantity, 0);
+
+      const updatePayload: Record<string, unknown> = { total_amount: newTotal };
+      if (paymentMethod) updatePayload.payment_method = paymentMethod;
+
+      const { error: saleErr } = await client.from('sales').update(updatePayload).eq('id', saleId);
+      if (saleErr) throw new Error(saleErr.message);
+      return { success: true };
+    }
+
     await db.run('BEGIN TRANSACTION');
     try {
       const sale = await db.get<Sale>('SELECT * FROM sales WHERE id = ?', [saleId]);
@@ -429,7 +476,10 @@ export const dbService = {
       const newTotalAmount = allItems.reduce((sum, itm) => sum + (itm.price * itm.quantity), 0);
       const diffAmount = newTotalAmount - sale.total_amount;
 
-      await db.run('UPDATE sales SET total_amount = ? WHERE id = ?', [newTotalAmount, saleId]);
+      const saleUpdate: Record<string, unknown> = { total_amount: newTotalAmount };
+      if (paymentMethod) saleUpdate.payment_method = paymentMethod;
+      const setClauses = Object.keys(saleUpdate).map(k => `${k} = ?`).join(', ');
+      await db.run(`UPDATE sales SET ${setClauses} WHERE id = ?`, [...Object.values(saleUpdate), saleId]);
 
       // If it's a Cari sale, update Cari balance and the cari transaction
       if (sale.cari_id !== 'pesin') {
@@ -437,7 +487,6 @@ export const dbService = {
         if (cari) {
           const newBalance = Math.max(0, cari.balance + diffAmount);
           await db.run('UPDATE cariler SET balance = ? WHERE id = ?', [newBalance, sale.cari_id]);
-          // Update the transaction amount in cari_transactions
           await db.run("UPDATE cari_transactions SET amount = ? WHERE cari_id = ? AND description = 'Satış İşlemi' AND amount = ?", [newTotalAmount, sale.cari_id, sale.total_amount]);
         }
       }
