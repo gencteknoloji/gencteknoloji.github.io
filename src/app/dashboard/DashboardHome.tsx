@@ -2690,7 +2690,7 @@ export default function DashboardHome() {
                 {/* ================================================== */}
                 {(() => {
                   const todayStr = new Date().toLocaleDateString('sv-SE');
-                  const todaySalesList = [...sales].filter(s => s.date === todayStr).reverse();
+                  const todaySalesList = [...sales].filter(s => s.date === todayStr).sort((a, b) => Number(b.id) - Number(a.id));
                   const todayTotal = todaySalesList.reduce((acc, s) => acc + (toNum(s.total_amount) || 0), 0);
                   
                   return (
