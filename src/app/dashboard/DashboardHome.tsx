@@ -2684,6 +2684,132 @@ export default function DashboardHome() {
 
                   </div>
                 </div>
+
+                {/* ================================================== */}
+                {/* BUGÜNKÜ SATIŞLAR — Sıralı Takip Listesi            */}
+                {/* ================================================== */}
+                {(() => {
+                  const todayStr = new Date().toLocaleDateString('sv-SE');
+                  const todaySalesList = [...sales].filter(s => s.date === todayStr).reverse();
+                  const todayTotal = todaySalesList.reduce((acc, s) => acc + (toNum(s.total_amount) || 0), 0);
+                  
+                  return (
+                    <div className="mt-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                          </span>
+                          <h3 className="text-sm font-bold text-white">Bugünkü Satışlar</h3>
+                          <span className="text-[10px] text-muted bg-white/5 border border-white/8 px-2 py-0.5 rounded-full font-mono">
+                            {todaySalesList.length} fiş
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-black text-emerald-400 font-mono">
+                          {todayTotal.toLocaleString('tr-TR')} TL
+                        </span>
+                      </div>
+
+                      {todaySalesList.length === 0 ? (
+                        <div className="glass-panel p-10 text-center border border-dashed border-white/10">
+                          <div className="text-3xl mb-2 opacity-30">🛒</div>
+                          <p className="text-secondary text-xs">Bugün henüz satış yapılmadı.</p>
+                          <p className="text-muted text-[10px] mt-1">Yukarıdan satış ekleyin, buraya gerçek zamanlı yansıyacak.</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2.5">
+                          {todaySalesList.map((sale, saleIdx) => {
+                            const saleTotal = toNum(sale.total_amount) || 0;
+                            const saleItems: any[] = sale.items || [];
+                            const isCari = sale.cari_id && sale.cari_id !== 'pesin';
+                            const pm = sale.payment_method || 'Nakit';
+                            const paymentBadge =
+                              isCari
+                                ? { label: '🤝 Cari', cls: 'text-purple-300 bg-purple-500/15 border-purple-500/25' }
+                                : pm === 'Kredi Kartı' || pm === 'Kart'
+                                ? { label: '💳 Kart', cls: 'text-blue-300 bg-blue-500/15 border-blue-500/25' }
+                                : pm === 'Havale/EFT'
+                                ? { label: '🏦 EFT', cls: 'text-cyan-300 bg-cyan-500/15 border-cyan-500/25' }
+                                : { label: '💵 Nakit', cls: 'text-emerald-300 bg-emerald-500/15 border-emerald-500/25' };
+                            const saleNumber = todaySalesList.length - saleIdx;
+                            return (
+                              <div key={sale.id} className="glass-panel p-0 overflow-hidden border border-white/6 hover:border-indigo-500/20 hover:shadow-xl transition-all group">
+                                {/* Fiş Başlığı */}
+                                <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.018] border-b border-white/5">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="w-6 h-6 rounded-lg bg-indigo-500/15 border border-indigo-500/20 text-[9px] text-indigo-400 font-black font-mono flex items-center justify-center flex-shrink-0">
+                                      {saleNumber}
+                                    </span>
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${paymentBadge.cls}`}>
+                                      {paymentBadge.label}
+                                    </span>
+                                    {isCari && (
+                                      <span className="text-[9px] text-secondary truncate max-w-[140px] font-semibold">
+                                        {customers.find(c => c.id === sale.cari_id)?.name || sale.cari_id}
+                                      </span>
+                                    )}
+                                    {sale.notes && (
+                                      <span className="text-[9px] text-muted italic truncate max-w-[160px]" title={sale.notes}>
+                                        📝 {sale.notes}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                                    <span className="text-[14px] font-extrabold text-white font-mono tracking-tight">
+                                      {saleTotal.toLocaleString('tr-TR')} TL
+                                    </span>
+                                    <button
+                                      onClick={() => handleDeleteSale(sale.id)}
+                                      title="Satışı Sil"
+                                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Ürün Satırları */}
+                                <div className="px-4 py-2.5 flex flex-col gap-1.5">
+                                  {saleItems.length === 0 ? (
+                                    <span className="text-[10px] text-muted italic">Ürün bilgisi yok</span>
+                                  ) : saleItems.map((item: any, itemIdx: number) => {
+                                    const lineTotal = toNum(item.price) * toInt(item.quantity, 1);
+                                    return (
+                                      <div key={itemIdx} className="flex items-center justify-between text-[11px] py-0.5 hover:bg-white/[0.03] -mx-1 px-1 rounded-md transition-colors group/item">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                          <span className="w-4 h-4 rounded-md bg-white/5 border border-white/8 text-[8px] text-muted font-mono flex items-center justify-center flex-shrink-0">
+                                            {itemIdx + 1}
+                                          </span>
+                                          <span className="text-white font-semibold truncate">{item.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 shrink-0 ml-3">
+                                          <span className="text-muted font-mono text-[10px]">{toInt(item.quantity, 1)} adet</span>
+                                          <span className="text-secondary font-mono text-[10px]">× {toNum(item.price).toLocaleString('tr-TR')} TL</span>
+                                          <span className="text-emerald-400 font-bold font-mono text-[11px] min-w-[60px] text-right">
+                                            {lineTotal.toLocaleString('tr-TR')} TL
+                                          </span>
+                                          <button
+                                            onClick={() => handleOpenEditSaleItem(sale.id, item, sale.payment_method)}
+                                            className="opacity-0 group-hover/item:opacity-100 text-muted hover:text-indigo-300 hover:bg-indigo-500/15 p-1 rounded-md transition-all cursor-pointer"
+                                            title="Bu kalemi düzenle"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
               </div>
             )}
 
