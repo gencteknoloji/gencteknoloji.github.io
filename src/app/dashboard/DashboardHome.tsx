@@ -1064,6 +1064,18 @@ export default function DashboardHome() {
     setPageProdDiger(1);
   }, [globalProductSearch]);
 
+  // Close sold product edit dropdowns on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-sold-dropdown]') && !target.closest('[id^="sold-edit-menu-"]')) {
+        document.querySelectorAll('[data-sold-dropdown]').forEach((el: any) => { el.style.display = 'none'; });
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
+
   // --- GÜN SONU Kapatma ve Düzenleme İşleyicileri ---
   const handleCloseDay = async (expectedCash, cashRevenue, cardRevenue, todayExpenses, kSales, fPayments, cashDiff, cardDiff) => {
     if (physicalCash === '' || physicalCard === '') {
@@ -2703,7 +2715,7 @@ export default function DashboardHome() {
                   const cardDiff = physicalCard !== '' ? (toNum(physicalCard) - cardRevenue) : 0;
 
                   // Aggregate sold products today
-                  const soldProductsMap: Record<string, { name: string; quantity: number; total: number }> = {};
+                  const soldProductsMap: Record<string, { name: string; quantity: number; total: number; rawItems: { saleId: any; item: any }[] }> = {};
                   todaySales.forEach(s => {
                     if (s.items && Array.isArray(s.items)) {
                       s.items.forEach(item => {
@@ -2714,11 +2726,13 @@ export default function DashboardHome() {
                           soldProductsMap[name] = {
                             name,
                             quantity: 0,
-                            total: 0
+                            total: 0,
+                            rawItems: []
                           };
                         }
                         soldProductsMap[name].quantity += qty;
                         soldProductsMap[name].total += qty * price;
+                        soldProductsMap[name].rawItems.push({ saleId: parseInt(s.id as any) || s.id as any, item });
                       });
                     }
                   });
@@ -2903,28 +2917,84 @@ export default function DashboardHome() {
                                   <th className="p-3">Ürün / Hizmet Adı</th>
                                   <th className="p-3 text-center">Adet</th>
                                   <th className="p-3 text-right">Ortalama Birim Fiyat</th>
-                                  <th className="p-3 text-right pr-4">Toplam Tutar</th>
+                                  <th className="p-3 text-right">Toplam Tutar</th>
+                                  <th className="p-3 text-center pr-4">İşlem</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-white/5">
-                                {soldProductsList.map((item, idx) => (
-                                  <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
-                                    <td className="p-3 pl-4 font-mono text-secondary">{idx + 1}</td>
-                                    <td className="p-3 font-semibold text-white">{item.name}</td>
-                                    <td className="p-3 text-center font-bold text-indigo-400 font-mono">{item.quantity}</td>
-                                    <td className="p-3 text-right font-mono text-secondary">
-                                      {(item.total / item.quantity).toLocaleString('tr-TR')} TL
-                                    </td>
-                                    <td className="p-3 text-right pr-4 font-mono font-semibold text-emerald-400">
-                                      {item.total.toLocaleString('tr-TR')} TL
-                                    </td>
-                                  </tr>
-                                ))}
+                                {soldProductsList.map((item, idx) => {
+                                  const menuId = `sold-edit-menu-${idx}`;
+                                  return (
+                                    <tr key={idx} className="hover:bg-white/[0.01] transition-colors group relative">
+                                      <td className="p-3 pl-4 font-mono text-secondary">{idx + 1}</td>
+                                      <td className="p-3 font-semibold text-white">{item.name}</td>
+                                      <td className="p-3 text-center font-bold text-indigo-400 font-mono">{item.quantity}</td>
+                                      <td className="p-3 text-right font-mono text-secondary">
+                                        {(item.total / item.quantity).toLocaleString('tr-TR')} TL
+                                      </td>
+                                      <td className="p-3 text-right font-mono font-semibold text-emerald-400">
+                                        {item.total.toLocaleString('tr-TR')} TL
+                                      </td>
+                                      <td className="p-3 text-center pr-4">
+                                        <div className="relative inline-block">
+                                          <button
+                                            id={menuId}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const menu = document.getElementById(menuId + '-dropdown');
+                                              if (menu) {
+                                                const isOpen = menu.style.display !== 'none' && menu.style.display !== '';
+                                                // Close all other open menus first
+                                                document.querySelectorAll('[data-sold-dropdown]').forEach((el: any) => { el.style.display = 'none'; });
+                                                menu.style.display = isOpen ? 'none' : 'block';
+                                              }
+                                            }}
+                                            className="flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/25 text-[10px] text-indigo-400 border border-indigo-500/20 font-semibold cursor-pointer transition-all"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            Düzenle
+                                          </button>
+                                          <div
+                                            id={menuId + '-dropdown'}
+                                            data-sold-dropdown="true"
+                                            style={{ display: 'none' }}
+                                            className="absolute right-0 top-full mt-1 z-50 min-w-[260px] bg-neutral-900 border border-white/10 rounded-xl shadow-2xl p-2 flex flex-col gap-1"
+                                          >
+                                            <div className="text-[10px] text-muted font-bold uppercase tracking-wider px-2 py-1 border-b border-white/10 mb-1">
+                                              Satış Kayıtları — {item.name}
+                                            </div>
+                                            {item.rawItems.map((raw, ri) => (
+                                              <div key={ri} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                                                <div className="flex flex-col">
+                                                  <span className="text-[10px] text-white font-mono">
+                                                    {toInt(raw.item.quantity, 1)} adet × {toNum(raw.item.price).toLocaleString('tr-TR')} TL
+                                                  </span>
+                                                  <span className="text-[9px] text-muted">Fiş #{raw.saleId}</span>
+                                                </div>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    document.querySelectorAll('[data-sold-dropdown]').forEach((el: any) => { el.style.display = 'none'; });
+                                                    handleOpenEditSaleItem(raw.saleId, raw.item);
+                                                  }}
+                                                  className="flex-shrink-0 px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/25 text-[10px] text-amber-400 border border-amber-500/20 font-semibold cursor-pointer transition-all"
+                                                >
+                                                  Düzenle
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           )}
                         </div>
                       </div>
+
 
                       {/* Geçmiş Gün Sonu Raporları Listesi */}
                       <div className="glass-panel p-0 overflow-hidden flex flex-col mt-6">
