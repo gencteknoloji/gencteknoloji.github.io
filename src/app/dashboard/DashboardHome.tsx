@@ -816,17 +816,16 @@ export default function DashboardHome() {
       setCheckoutProducts([]);
       return;
     }
-    
-    // Perform client-side case-insensitive search using Turkish locale
-    const term = productSearch.trim().toLocaleLowerCase('tr-TR');
-    const results = products.filter(p => 
-      (p.name && p.name.toLocaleLowerCase('tr-TR').includes(term)) ||
-      (p.barcode && String(p.barcode).toLocaleLowerCase('tr-TR').includes(term)) ||
-      (p.imei && String(p.imei).toLocaleLowerCase('tr-TR').includes(term))
-    ).slice(0, 50); // Limit to 50 results
-    
-    setCheckoutProducts(results);
-  }, [productSearch, products]);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const results = await dbService.searchProducts(productSearch);
+        setCheckoutProducts(results || []);
+      } catch (err) {
+        console.error("Checkout product search error:", err);
+      }
+    }, 200);
+    return () => clearTimeout(delayDebounce);
+  }, [productSearch]);
 
   // Unified Sales Analysis Data Loader
   const loadAnalysisData = async () => {

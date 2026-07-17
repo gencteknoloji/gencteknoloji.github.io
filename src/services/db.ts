@@ -1057,13 +1057,29 @@ export const dbService = {
 
   async searchProducts(query: string): Promise<Product[]> {
     if (!query || !query.trim()) return [];
-    const q = `%${query.trim().toLowerCase()}%`;
-    return db.all<Product>(
-      `SELECT * FROM products 
-       WHERE LOWER(name) LIKE ? OR LOWER(barcode) LIKE ? OR LOWER(imei) LIKE ? 
-       LIMIT 50`,
-      [q, q, q]
-    );
+    
+    const normalize = (text: string) => {
+      if (!text) return '';
+      return String(text)
+        .replace(/İ/g, 'i')
+        .replace(/I/g, 'i')
+        .replace(/ı/g, 'i')
+        .replace(/Ş/g, 's').replace(/ş/g, 's')
+        .replace(/Ğ/g, 'g').replace(/ğ/g, 'g')
+        .replace(/Ç/g, 'c').replace(/ç/g, 'c')
+        .replace(/Ö/g, 'o').replace(/ö/g, 'o')
+        .replace(/Ü/g, 'u').replace(/ü/g, 'u')
+        .toLowerCase();
+    };
+
+    const term = normalize(query.trim());
+    const allProducts = await db.all<Product>('SELECT * FROM products');
+    
+    return allProducts.filter(p => 
+      normalize(p.name).includes(term) ||
+      normalize(p.barcode).includes(term) ||
+      normalize(p.imei).includes(term)
+    ).slice(0, 50);
   },
 
   async getSalesAnalysis(startDate: string, endDate: string): Promise<any> {
