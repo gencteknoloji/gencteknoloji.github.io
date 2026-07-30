@@ -1,4 +1,5 @@
 "use client";
+import { formatDateISO } from '@/lib/utils/date';
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -518,7 +519,7 @@ export default function DashboardHome() {
   const [paymentMethod, setPaymentMethod] = useState('Nakit');
   const [saleNotes, setSaleNotes] = useState('');
   const [productSearch, setProductSearch] = useState('');
-  const [saleDate, setSaleDate] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [saleDate, setSaleDate] = useState(formatDateISO());
 
   // STOK STATE
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -556,8 +557,8 @@ export default function DashboardHome() {
 
   // Unified Reports State
   const [reportFilterRange, setReportFilterRange] = useState('today');
-  const [reportCustomStart, setReportCustomStart] = useState(new Date().toLocaleDateString('sv-SE'));
-  const [reportCustomEnd, setReportCustomEnd] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [reportCustomStart, setReportCustomStart] = useState(formatDateISO());
+  const [reportCustomEnd, setReportCustomEnd] = useState(formatDateISO());
   const [analysisData, setAnalysisData] = useState<{
     summary: {
       totalSales: number;
@@ -625,7 +626,7 @@ export default function DashboardHome() {
   const [editTxAmount, setEditTxAmount] = useState('');
   const [editTxDesc, setEditTxDesc] = useState('');
   const [editTxDate, setEditTxDate] = useState('');
-  const [tahsilatDate, setTahsilatDate] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [tahsilatDate, setTahsilatDate] = useState(formatDateISO());
   const [debtActionType, setDebtActionType] = useState('tahsilat');
 
   // Sale Item Editing States
@@ -641,7 +642,7 @@ export default function DashboardHome() {
   const [showAddTurkcell, setShowAddTurkcell] = useState(false);
   const [showEditTurkcell, setShowEditTurkcell] = useState(false);
   const [editTurkcellData, setEditTurkcellData] = useState<EditableTurkcellPremium | null>(null);
-  const [newTurkcell, setNewTurkcell] = useState<TurkcellForm>({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '' });
+  const [newTurkcell, setNewTurkcell] = useState<TurkcellForm>({ date: formatDateISO(), description: '', amount: '', notes: '' });
   const [turkcellSearch, setTurkcellSearch] = useState('');
 
   // TURKCELL DEVICE STOCK STATE
@@ -655,19 +656,19 @@ export default function DashboardHome() {
 
   // EXPENSE STATE
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
-  const [newExpense, setNewExpense] = useState<ExpenseForm>({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '', category: 'Genel Gider' });
+  const [newExpense, setNewExpense] = useState<ExpenseForm>({ date: formatDateISO(), description: '', amount: '', notes: '', category: 'Genel Gider', payment_method: 'Nakit' });
 
   // NETWORK STATE
   const [serverIp, setServerIp] = useState('localhost');
 
   // HISTORY STATE
-  const [historyDateFilter, setHistoryDateFilter] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [historyDateFilter, setHistoryDateFilter] = useState(formatDateISO());
   const [historyRangeFilter, setHistoryRangeFilter] = useState('today');
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
 
   // REPORT STATE
   const [reportRangeFilter, setReportRangeFilter] = useState('month');
-  const [reportDateFilter, setReportDateFilter] = useState(new Date().toLocaleDateString('sv-SE'));
+  const [reportDateFilter, setReportDateFilter] = useState(formatDateISO());
   const [reportSearch, setReportSearch] = useState('');
 
   // UTILS / SEARCHES
@@ -833,21 +834,21 @@ export default function DashboardHome() {
     setIsAnalysisLoading(true);
     try {
       const today = new Date();
-      let startDateStr = today.toLocaleDateString('sv-SE');
-      let endDateStr = today.toLocaleDateString('sv-SE');
+      let startDateStr = formatDateISO(today);
+      let endDateStr = formatDateISO(today);
 
       if (reportFilterRange === 'yesterday') {
         const yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
-        startDateStr = yesterday.toLocaleDateString('sv-SE');
-        endDateStr = yesterday.toLocaleDateString('sv-SE');
+        startDateStr = formatDateISO(yesterday);
+        endDateStr = formatDateISO(yesterday);
       } else if (reportFilterRange === '7days') {
         const limitDate = new Date();
         limitDate.setDate(today.getDate() - 7);
-        startDateStr = limitDate.toLocaleDateString('sv-SE');
+        startDateStr = formatDateISO(limitDate);
       } else if (reportFilterRange === 'this_month') {
         const limitDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        startDateStr = limitDate.toLocaleDateString('sv-SE');
+        startDateStr = formatDateISO(limitDate);
       } else if (reportFilterRange === 'general') {
         startDateStr = '2000-01-01';
         endDateStr = '2100-12-31';
@@ -877,21 +878,21 @@ export default function DashboardHome() {
     setIsBreakdownLoading(true);
     try {
       const today = new Date();
-      let startDateStr = today.toLocaleDateString('sv-SE');
-      let endDateStr = today.toLocaleDateString('sv-SE');
+      let startDateStr = formatDateISO(today);
+      let endDateStr = formatDateISO(today);
 
       if (reportFilterRange === 'yesterday') {
         const yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
-        startDateStr = yesterday.toLocaleDateString('sv-SE');
-        endDateStr = yesterday.toLocaleDateString('sv-SE');
+        startDateStr = formatDateISO(yesterday);
+        endDateStr = formatDateISO(yesterday);
       } else if (reportFilterRange === '7days') {
         const limitDate = new Date();
         limitDate.setDate(today.getDate() - 7);
-        startDateStr = limitDate.toLocaleDateString('sv-SE');
+        startDateStr = formatDateISO(limitDate);
       } else if (reportFilterRange === 'this_month') {
         const limitDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        startDateStr = limitDate.toLocaleDateString('sv-SE');
+        startDateStr = formatDateISO(limitDate);
       } else if (reportFilterRange === 'general') {
         startDateStr = '2000-01-01';
         endDateStr = '2100-12-31';
@@ -1086,7 +1087,7 @@ export default function DashboardHome() {
       return;
     }
 
-    const dateStr = new Date().toLocaleDateString('sv-SE');
+    const dateStr = formatDateISO();
     const confirmMsg = `${dateStr} tarihine ait gün sonu hesabını kapatmak istediğinize emin misiniz? Bu işlem geçmiş raporlara kaydedilecektir.`;
     if (!window.confirm(confirmMsg)) return;
 
@@ -1436,7 +1437,7 @@ export default function DashboardHome() {
       setSelectedCariId('pesin');
       setPaymentMethod('Nakit');
       setSaleNotes('');
-      setSaleDate(new Date().toLocaleDateString('sv-SE'));
+      setSaleDate(formatDateISO());
       
       // Reload Data (Stoks, Cariler, Dashboard)
       await loadAllData();
@@ -1496,7 +1497,7 @@ export default function DashboardHome() {
     try {
       await dbService.addTurkcellPremium(newTurkcell);
       setShowAddTurkcell(false);
-      setNewTurkcell({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '' });
+      setNewTurkcell({ date: formatDateISO(), description: '', amount: '', notes: '' });
       await loadAllData();
     } catch (err: unknown) {
       alert(getErrorMessage(err));
@@ -1613,7 +1614,7 @@ export default function DashboardHome() {
     if (!newExpense.description || !newExpense.amount) return;
     try {
       await dbService.addExpense(newExpense);
-      setNewExpense({ date: new Date().toLocaleDateString('sv-SE'), description: '', amount: '', notes: '', category: 'Genel Gider' });
+      setNewExpense({ date: formatDateISO(), description: '', amount: '', notes: '', category: 'Genel Gider', payment_method: 'Nakit' });
       await loadAllData();
     } catch (err: unknown) {
       alert(getErrorMessage(err));
@@ -1877,7 +1878,7 @@ export default function DashboardHome() {
       );
       setTahsilatAmount('');
       setTahsilatDesc('');
-      setTahsilatDate(new Date().toLocaleDateString('sv-SE'));
+      setTahsilatDate(formatDateISO());
       
       // Detayları ve listeyi yenile
       const txs = await dbService.getCariTransactions(selectedDebtCariId);
@@ -2690,7 +2691,7 @@ export default function DashboardHome() {
                 {/* BUGÜNKÜ SATIŞLAR — Sıralı Takip Listesi            */}
                 {/* ================================================== */}
                 {(() => {
-                  const todayStr = new Date().toLocaleDateString('sv-SE');
+                  const todayStr = formatDateISO();
                   const todaySalesList = [...sales].filter(s => s.date === todayStr).sort((a, b) => Number(b.id) - Number(a.id));
                   const todayTotal = todaySalesList.reduce((acc, s) => acc + (toNum(s.total_amount) || 0), 0);
                   
@@ -2844,7 +2845,7 @@ export default function DashboardHome() {
                 </div>
 
                 {(() => {
-                  const todayStr = new Date().toLocaleDateString('sv-SE');
+                  const todayStr = formatDateISO();
                   const todaySales = sales.filter(s => s.date === todayStr);
 
                   const kSales = toNum(kontorSales) || 0;
@@ -3292,7 +3293,7 @@ export default function DashboardHome() {
                 {/* Daily Summary Card */}
                 {(() => {
                   const today = new Date();
-                  const todayStr = today.toLocaleDateString('sv-SE');
+                  const todayStr = formatDateISO(today);
                   
                   let filteredSales = [];
                   if (historyRangeFilter === 'today') {
@@ -3300,32 +3301,32 @@ export default function DashboardHome() {
                   } else if (historyRangeFilter === 'tomorrow') {
                     const tomorrow = new Date();
                     tomorrow.setDate(today.getDate() + 1);
-                    const tomorrowStr = tomorrow.toLocaleDateString('sv-SE');
+                    const tomorrowStr = formatDateISO(tomorrow);
                     filteredSales = sales.filter(s => s.date === tomorrowStr);
                   } else if (historyRangeFilter === '7days') {
                     const limitDate = new Date();
                     limitDate.setDate(today.getDate() - 7);
-                    const limitStr = limitDate.toLocaleDateString('sv-SE');
+                    const limitStr = formatDateISO(limitDate);
                     filteredSales = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
                   } else if (historyRangeFilter === 'month') {
                     const limitDate = new Date();
                     limitDate.setMonth(today.getMonth() - 1);
-                    const limitStr = limitDate.toLocaleDateString('sv-SE');
+                    const limitStr = formatDateISO(limitDate);
                     filteredSales = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
                   } else if (historyRangeFilter === '3months') {
                     const limitDate = new Date();
                     limitDate.setMonth(today.getMonth() - 3);
-                    const limitStr = limitDate.toLocaleDateString('sv-SE');
+                    const limitStr = formatDateISO(limitDate);
                     filteredSales = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
                   } else if (historyRangeFilter === '6months') {
                     const limitDate = new Date();
                     limitDate.setMonth(today.getMonth() - 6);
-                    const limitStr = limitDate.toLocaleDateString('sv-SE');
+                    const limitStr = formatDateISO(limitDate);
                     filteredSales = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
                   } else if (historyRangeFilter === 'year') {
                     const limitDate = new Date();
                     limitDate.setFullYear(today.getFullYear() - 1);
-                    const limitStr = limitDate.toLocaleDateString('sv-SE');
+                    const limitStr = formatDateISO(limitDate);
                     filteredSales = sales.filter(s => s.date >= limitStr && s.date <= todayStr);
                   } else {
                     filteredSales = sales.filter(s => s.date === historyDateFilter);
@@ -3339,7 +3340,7 @@ export default function DashboardHome() {
                     if (historyRangeFilter === 'tomorrow') {
                       const tomorrow = new Date();
                       tomorrow.setDate(today.getDate() + 1);
-                      return `Yarın (${tomorrow.toLocaleDateString('sv-SE')})`;
+                      return `Yarın (${formatDateISO(tomorrow)})`;
                     }
                     if (historyRangeFilter === '7days') return 'Son 7 Gün';
                     if (historyRangeFilter === 'month') return 'Son Ay';

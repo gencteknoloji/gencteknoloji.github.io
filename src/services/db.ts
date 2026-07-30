@@ -1,3 +1,4 @@
+import { formatDateISO } from '@/lib/utils/date';
 import { db } from '@/lib/db/client';
 import { sha256 } from '@/lib/db/crypto';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -56,7 +57,7 @@ export const dbService = {
         await db.run(
           `INSERT INTO cari_transactions (id, cari_id, date, type, amount, description) 
            VALUES (?, ?, ?, ?, ?, ?)`,
-          [txId, newCari.id, new Date().toLocaleDateString('sv-SE'), 'Borç', Math.abs(newCari.balance), 'Açılış Bakiyesi']
+          [txId, newCari.id, formatDateISO(), 'Borç', Math.abs(newCari.balance), 'Açılış Bakiyesi']
         );
       }
       await db.run('COMMIT');
@@ -311,7 +312,7 @@ export const dbService = {
       // Veriyi temizleyerek gönder
       const cleanedSale = {
         cari_id: sale.cari_id || 'pesin',
-        date: sale.date || new Date().toLocaleDateString('sv-SE'),
+        date: sale.date || formatDateISO(),
         payment_method: sale.payment_method || 'Nakit',
         notes: sale.notes || '',
         total_amount: Number(sale.total_amount) || 0,
@@ -547,12 +548,13 @@ export const dbService = {
       description: expense.description,
       amount: toNum(expense.amount) || 0,
       notes: expense.notes || '',
-      category: expense.category || 'Genel Gider'
+      category: expense.category || 'Genel Gider',
+      payment_method: expense.payment_method || 'Nakit'
     };
     await db.run(
-      `INSERT INTO expenses (id, date, description, amount, notes, category) 
+      `INSERT INTO expenses (id, date, description, amount, notes, category, payment_method) 
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [newExpense.id, newExpense.date, newExpense.description, newExpense.amount, newExpense.notes, newExpense.category]
+      [newExpense.id, newExpense.date, newExpense.description, newExpense.amount, newExpense.notes, newExpense.category, newExpense.payment_method]
     );
     return newExpense;
   },
@@ -560,9 +562,9 @@ export const dbService = {
   async updateExpense(id: string, expense: ExpenseInput) {
     await db.run(
       `UPDATE expenses 
-       SET date = ?, description = ?, amount = ?, notes = ?, category = ? 
+       SET date = ?, description = ?, amount = ?, notes = ?, category = ?, payment_method = ?
        WHERE id = ?`,
-      [expense.date, expense.description, toNum(expense.amount) || 0, expense.notes, expense.category || 'Genel Gider', id]
+      [expense.date, expense.description, toNum(expense.amount) || 0, expense.notes, expense.category || 'Genel Gider', expense.payment_method || 'Nakit', id]
     );
     return { success: true };
   },
@@ -574,13 +576,13 @@ export const dbService = {
 
   // --- DASHBOARD VERİLERİ ---
   async getDashboard(): Promise<DashboardData> {
-    const todayStr = new Date().toLocaleDateString('sv-SE');
+    const todayStr = formatDateISO();
     const tempDate = new Date();
     tempDate.setDate(tempDate.getDate() - 7);
-    const sevenDaysAgoStr = tempDate.toLocaleDateString('sv-SE');
+    const sevenDaysAgoStr = formatDateISO(tempDate);
     const tempMonth = new Date();
     tempMonth.setDate(tempMonth.getDate() - 30);
-    const thirtyDaysAgoStr = tempMonth.toLocaleDateString('sv-SE');
+    const thirtyDaysAgoStr = formatDateISO(tempMonth);
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('sv-SE');
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('sv-SE');
@@ -636,7 +638,7 @@ export const dbService = {
       const d = new Date();
       d.setHours(12, 0, 0, 0);
       d.setDate(d.getDate() - i);
-      const dStr = d.toLocaleDateString('sv-SE');
+      const dStr = formatDateISO(d);
       weeklyChart.push({
         date: d.toLocaleDateString('tr-TR', { weekday: 'short' }),
         amount: weeklyChartMap[dStr] || 0
@@ -654,7 +656,7 @@ export const dbService = {
       const dObj = new Date();
       dObj.setHours(12, 0, 0, 0);
       dObj.setDate(dObj.getDate() - i);
-      const dStr = dObj.toLocaleDateString('sv-SE');
+      const dStr = formatDateISO(dObj);
       monthlyChart.push({
         date: dObj.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
         amount: monthMap[dStr] || 0
@@ -693,7 +695,7 @@ export const dbService = {
       purchase_price: toNum(device.purchase_price) || 0.0,
       sale_price: toNum(device.sale_price) || 0.0,
       status: device.status || 'Stokta',
-      date_added: new Date().toLocaleDateString('sv-SE'),
+      date_added: formatDateISO(),
       notes: device.notes || '',
       kdv_ratio: toInt(device.kdv_ratio) || 20
     };
@@ -866,13 +868,13 @@ export const dbService = {
   },
 
   async getInitialData(): Promise<any> {
-    const todayStr = new Date().toLocaleDateString('sv-SE');
+    const todayStr = formatDateISO();
     const tempDate = new Date();
     tempDate.setDate(tempDate.getDate() - 7);
-    const sevenDaysAgoStr = tempDate.toLocaleDateString('sv-SE');
+    const sevenDaysAgoStr = formatDateISO(tempDate);
     const tempMonth = new Date();
     tempMonth.setDate(tempMonth.getDate() - 30);
-    const thirtyDaysAgoStr = tempMonth.toLocaleDateString('sv-SE');
+    const thirtyDaysAgoStr = formatDateISO(tempMonth);
 
     const sql = `
       SELECT json_build_object(
@@ -989,7 +991,7 @@ export const dbService = {
       const d = new Date();
       d.setHours(12, 0, 0, 0);
       d.setDate(d.getDate() - i);
-      const dStr = d.toLocaleDateString('sv-SE');
+      const dStr = formatDateISO(d);
       weeklyChart.push({
         date: d.toLocaleDateString('tr-TR', { weekday: 'short' }),
         amount: weeklyChartMap[dStr] || 0
@@ -1009,7 +1011,7 @@ export const dbService = {
       const dObj = new Date();
       dObj.setHours(12, 0, 0, 0);
       dObj.setDate(dObj.getDate() - i);
-      const dStr = dObj.toLocaleDateString('sv-SE');
+      const dStr = formatDateISO(dObj);
       monthlyChart.push({
         date: dObj.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
         amount: monthMap[dStr] || 0

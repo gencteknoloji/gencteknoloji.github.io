@@ -71,6 +71,7 @@ export interface Expense {
   amount: number;
   notes: string;
   category?: string;
+  payment_method?: string;
 }
 
 export interface TurkcellDevice {
@@ -252,6 +253,7 @@ export interface ExpenseForm {
   amount: string;
   notes: string;
   category: string;
+  payment_method: string;
 }
 
 export interface EditingSaleItem {
@@ -292,6 +294,7 @@ export type ExpenseInput = {
   amount?: string | number;
   notes?: string;
   category?: string;
+  payment_method?: string;
 };
 
 export type TurkcellDeviceInput = {

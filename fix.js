@@ -1,0 +1,1 @@
+import fs from 'fs'; const f = 'src/app/dashboard/DashboardHome.tsx'; let c = fs.readFileSync(f, 'utf8'); c = c.substring(c.indexOf('\" use "client\;', 5)); c = c.replace('import { formatDateISO } from \'@/lib/utils/date\';\r\n  ConfirmModalState,', 'import type { AuthUser, Cari, CariForm, CariTransaction, ChartPoint, ConfirmModalState,'); fs.writeFileSync(f, c);  
