@@ -584,8 +584,8 @@ export const dbService = {
     tempMonth.setDate(tempMonth.getDate() - 30);
     const thirtyDaysAgoStr = formatDateISO(tempMonth);
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('sv-SE');
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('sv-SE');
+    const startOfMonth = formatDateISO(new Date(now.getFullYear(), now.getMonth(), 1));
+    const endOfMonth = formatDateISO(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const [
       todaySalesRow,
