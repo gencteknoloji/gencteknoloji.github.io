@@ -553,7 +553,7 @@ export const dbService = {
     };
     await db.run(
       `INSERT INTO expenses (id, date, description, amount, notes, category, payment_method) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [newExpense.id, newExpense.date, newExpense.description, newExpense.amount, newExpense.notes, newExpense.category, newExpense.payment_method]
     );
     return newExpense;
