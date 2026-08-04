@@ -3029,14 +3029,6 @@ export default function DashboardHome() {
                                   </span>
                                 </div>
 
-                                {/* Nakit Farkı */}
-                                <div className={`p-2.5 rounded-lg border font-semibold flex flex-col justify-center ${physicalCash === '' ? 'bg-white/2 border-white/5 text-white' : cashDiff === 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : cashDiff > 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                                  <span className="text-[9px] text-secondary">Nakit Farkı</span>
-                                  <span className="text-xs font-mono font-black mt-0.5">
-                                    {physicalCash === '' ? '0,00 TL' : cashDiff > 0 ? `+${cashDiff.toLocaleString('tr-TR')} TL (Kasa Fazlası)` : cashDiff < 0 ? `${cashDiff.toLocaleString('tr-TR')} TL (Kasa Eksiği)` : '0,00 TL (Net)'}
-                                  </span>
-                                </div>
-
                                 {/* Beklenen POS */}
                                 <div className="p-2.5 rounded-lg border border-white/5 bg-white/1 flex flex-col justify-center">
                                   <span className="text-[9px] text-secondary">Beklenen POS / Kart</span>
@@ -3048,11 +3040,11 @@ export default function DashboardHome() {
                                   </span>
                                 </div>
 
-                                {/* POS Farkı */}
-                                <div className={`p-2.5 rounded-lg border font-semibold flex flex-col justify-center ${physicalCard === '' ? 'bg-white/2 border-white/5 text-white' : cardDiff === 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : cardDiff > 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                                  <span className="text-[9px] text-secondary">POS / Kart Farkı</span>
-                                  <span className="text-xs font-mono font-black mt-0.5">
-                                    {physicalCard === '' ? '0,00 TL' : cardDiff > 0 ? `+${cardDiff.toLocaleString('tr-TR')} TL (POS Fazlası)` : cardDiff < 0 ? `${cardDiff.toLocaleString('tr-TR')} TL (POS Eksiği)` : '0,00 TL (Net)'}
+                                {/* Toplam Kasa Farkı */}
+                                <div className={`sm:col-span-2 p-3 rounded-xl border font-bold flex flex-col justify-center text-center ${physicalCash === '' && physicalCard === '' ? 'bg-white/2 border-white/5 text-white' : (cashDiff + cardDiff) === 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : (cashDiff + cardDiff) > 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                                  <span className="text-[10px] text-secondary mb-1">Net Kasa Durumu (Eksi / Fazla)</span>
+                                  <span className="text-sm font-mono font-black">
+                                    {physicalCash === '' && physicalCard === '' ? '0,00 TL' : (cashDiff + cardDiff) > 0 ? `+${(cashDiff + cardDiff).toLocaleString('tr-TR')} TL (Genel Kasa Fazlası)` : (cashDiff + cardDiff) < 0 ? `${(cashDiff + cardDiff).toLocaleString('tr-TR')} TL (Genel Kasa Eksiği)` : '0,00 TL (Net / Eksiksiz)'}
                                   </span>
                                 </div>
                               </div>
