@@ -1,0 +1,1 @@
+const url='https://lsttulczgrzksenqzhkw.supabase.co/rest/v1/sale_items?select=*&limit=5'; const key='sb_publishable_nRjkdcRthTCjz7YEyg6_Cg_4IvONKw1'; fetch(url, {headers: {'apikey': key, 'Authorization': 'Bearer '+key}}).then(r= 
