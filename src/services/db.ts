@@ -576,7 +576,7 @@ export const dbService = {
         FROM sale_items s_item 
         JOIN products prod ON s_item.product_id = prod.id 
         JOIN sales s ON s_item.sale_id = s.id 
-        WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
+        WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
       `),
       db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [sevenDaysAgoStr]),
       db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [thirtyDaysAgoStr])
@@ -877,7 +877,7 @@ export const dbService = {
             FROM sale_items s_item 
             JOIN products prod ON s_item.product_id = prod.id 
             JOIN sales s ON s_item.sale_id = s.id 
-            WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
+            WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
           ), 0),
           'totalDeviceStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
           'totalDeviceStockSale', COALESCE((SELECT SUM(sale_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
