@@ -1084,8 +1084,8 @@ export const dbService = {
               WHERE s.date >= ? AND s.date <= ? 
                 AND p.type != 'Cihaz' 
                 AND p.type != 'Hizmet' 
-                AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
-                AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır')
+                AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
+                AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
             ), 0) +
             /* 3. Teknik Servis Geliri */
             COALESCE((
@@ -1095,6 +1095,8 @@ export const dbService = {
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? 
                 AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
+                AND LOWER(TRIM(p.name)) NOT IN ('kontör satışı', 'kontor satisi', 'kontör', 'kontor')
+                AND LOWER(TRIM(si.name)) NOT IN ('kontör satışı', 'kontor satisi', 'kontör', 'kontor')
             ), 0) -
             /* 4. Tüm Giderler */
             COALESCE((
