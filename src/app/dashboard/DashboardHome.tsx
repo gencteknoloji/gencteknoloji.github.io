@@ -1404,8 +1404,26 @@ export default function DashboardHome() {
     
     const qty = toInt(manualItem.quantity, 1);
     
+    // Auto-detect product if not selected via dropdown
+    let targetProductId = selectedProductIdForManual;
+    if (!targetProductId || targetProductId === 'manual') {
+      const cleanName = manualItem.name.trim().toLowerCase();
+      const matched = checkoutProducts.find(p => 
+        p.name.trim().toLowerCase() === cleanName ||
+        (p.barcode && p.barcode.trim() === manualItem.name.trim()) ||
+        (p.imei && p.imei.trim() === manualItem.name.trim())
+      ) || products.find(p => 
+        p.name.trim().toLowerCase() === cleanName ||
+        (p.barcode && p.barcode.trim() === manualItem.name.trim()) ||
+        (p.imei && p.imei.trim() === manualItem.name.trim())
+      );
+      if (matched) {
+        targetProductId = matched.id;
+      }
+    }
+
     setSaleItems([...saleItems, {
-      product_id: selectedProductIdForManual || 'manual',
+      product_id: targetProductId || 'manual',
       name: manualItem.name,
       price: toNum(manualItem.price) || 0,
       quantity: qty
@@ -1466,8 +1484,19 @@ export default function DashboardHome() {
       setSaleNotes('');
       setSaleDate(formatDateISO());
       
-      // Reload Data (Stoks, Cariler, Dashboard)
-      await loadAllData();
+      // Reload Data (Stocks, Cariler, Dashboard)
+      await loadAllData(true);
+      const openFolders = (['device', 'kilif', 'cam', 'sarj', 'kulaklik', 'hizmet', 'diger'] as const).filter(k => {
+        if (k === 'device') return deviceFolderOpen;
+        if (k === 'hizmet') return hizmetFolderOpen;
+        if (k === 'kilif') return kiliffFolderOpen;
+        if (k === 'cam') return camFolderOpen;
+        if (k === 'sarj') return sarjFolderOpen;
+        if (k === 'kulaklik') return kulaklikFolderOpen;
+        return digerFolderOpen;
+      });
+      await Promise.all(openFolders.map(k => loadFolderProducts(k)));
+
       alert("Satış başarıyla kaydedildi!");
     } catch (error: unknown) {
       console.error('[handleCompleteSale] Hata:', error);
@@ -3799,10 +3828,10 @@ export default function DashboardHome() {
                             {newProduct.type === 'Cihaz' || newProduct.category === 'Telefon' || newProduct.category === 'Tablet' ? (
                               <input 
                                 type="number" 
+                                min="0"
                                 placeholder="1" 
-                                className="custom-input"
-                                value={newProduct.type === 'Cihaz' ? '1' : newProduct.stock}
-                                disabled={newProduct.type === 'Cihaz'}
+                                className="custom-input font-bold"
+                                value={newProduct.stock}
                                 onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
                               />
                             ) : (
@@ -4049,9 +4078,15 @@ export default function DashboardHome() {
                         </td>
                         <td className="p-3 text-center">
                           {isStocked ? (
-                            <span className="font-bold text-xs text-indigo-400 font-mono">
-                              {prod.type === 'Cihaz' ? '1' : prod.stock} <span className="text-[10px] text-muted font-normal">adet</span>
-                            </span>
+                            (prod.stock ?? 0) > 0 ? (
+                              <span className="font-bold text-xs text-indigo-400 font-mono">
+                                {prod.stock} <span className="text-[10px] text-muted font-normal">adet</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30">
+                                0 adet (Tükendi / Satıldı)
+                              </span>
+                            )
                           ) : isService ? (
                             <span className="px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 text-[10px] font-bold border border-cyan-500/20">
                               Stoksuz Hizmet
@@ -6305,15 +6340,15 @@ export default function DashboardHome() {
                   {editProductData.type === 'Cihaz' || editProductData.category === 'Telefon' || editProductData.category === 'Tablet' ? (
                     <input 
                       type="number" 
+                      min="0"
                       placeholder="1" 
-                      disabled={editProductData.type === 'Cihaz'}
-                      className="custom-input"
-                      value={editProductData.type === 'Cihaz' ? 1 : editProductData.stock}
+                      className="custom-input font-bold"
+                      value={editProductData.stock ?? 0}
                       onChange={(e) => setEditProductData({ ...editProductData, stock: e.target.value })}
                     />
                   ) : (
                     <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
-                      ℹ️ <strong className="text-amber-300">Stoksuz Ürün</strong> (Stok takibi yapılmaz)
+                      ℹ️ <strong className="text-amber-300">{editProductData.type === 'Hizmet' ? 'Stoksuz Hizmet' : 'Stoksuz Ürün'}</strong> (Stok takibi yapılmaz)
                     </div>
                   )}
                 </div>

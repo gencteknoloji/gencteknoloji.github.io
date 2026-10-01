@@ -357,8 +357,8 @@ export const dbService = {
       if (!item) throw new Error('Satış kalemi bulunamadı!');
 
       // Revert stock for the deleted item
-      const prod = await db.get<{ type: string }>('SELECT type FROM products WHERE id = ?', [item.product_id]);
-      if (prod && prod.type === 'Cihaz') {
+      const prod = await db.get<{ type: string; category: string }>('SELECT type, category FROM products WHERE id = ?', [item.product_id]);
+      if (prod && (prod.type === 'Cihaz' || ['Telefon', 'Tablet'].includes(prod.category) || prod.type === 'Ürün')) {
         await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
       }
 
@@ -417,8 +417,8 @@ export const dbService = {
       if (!item) throw new Error('Satış kalemi bulunamadı!');
 
       // Revert old stock and add new stock difference
-      const prod = await db.get<{ type: string }>('SELECT type FROM products WHERE id = ?', [item.product_id]);
-      if (prod && prod.type === 'Cihaz') {
+      const prod = await db.get<{ type: string; category: string }>('SELECT type, category FROM products WHERE id = ?', [item.product_id]);
+      if (prod && (prod.type === 'Cihaz' || ['Telefon', 'Tablet'].includes(prod.category) || prod.type === 'Ürün')) {
         const stockDiff = item.quantity - toInt(newQuantity, 1);
         await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [stockDiff, item.product_id]);
       }
@@ -891,9 +891,9 @@ export const dbService = {
             JOIN sales s ON s_item.sale_id = s.id 
             WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
           ), 0),
-          'totalDeviceStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
-          'totalDeviceStockSale', COALESCE((SELECT SUM(sale_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
-          'deviceCount', COALESCE((SELECT COUNT(*) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
+          'totalDeviceStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 0)) FROM products WHERE (type = 'Cihaz' OR category IN ('Tablet', 'Telefon')) AND COALESCE(stock, 0) > 0), 0),
+          'totalDeviceStockSale', COALESCE((SELECT SUM(sale_price * COALESCE(stock, 0)) FROM products WHERE (type = 'Cihaz' OR category IN ('Tablet', 'Telefon')) AND COALESCE(stock, 0) > 0), 0),
+          'deviceCount', COALESCE((SELECT COUNT(*) FROM products WHERE (type = 'Cihaz' OR category IN ('Tablet', 'Telefon')) AND COALESCE(stock, 0) > 0), 0),
           'totalAccessoryStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 0)) FROM products WHERE type != 'Cihaz' AND category NOT IN ('Tablet', 'Telefon')), 0),
           'unstockedCount', COALESCE((SELECT COUNT(*) FROM products WHERE type NOT IN ('Cihaz', 'Hizmet') AND category NOT IN ('Tablet', 'Telefon', 'Tamir & Teknik Servis', 'İşçilik & Hizmet', 'Hizmet')), 0),
           'serviceCount', COALESCE((SELECT COUNT(*) FROM products WHERE type = 'Hizmet' OR category IN ('Tamir & Teknik Servis', 'İşçilik & Hizmet', 'Hizmet')), 0)
