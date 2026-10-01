@@ -2472,7 +2472,7 @@ export default function DashboardHome() {
                       </div>
 
                       {/* Sale Type Tabs */}
-                      <div className="grid grid-cols-3 gap-1 mb-4 bg-white/2 p-1 rounded-lg border border-white/5 text-[10px]">
+                      <div className="grid grid-cols-2 gap-2 mb-4 bg-white/2 p-1 rounded-lg border border-white/5 text-[10px]">
                         <button 
                           onClick={() => {
                             setSaleType('perakende');
@@ -2481,19 +2481,7 @@ export default function DashboardHome() {
                           }}
                           className={`py-2 px-1.5 rounded-md font-semibold text-center transition-colors ${saleType === 'perakende' ? 'bg-indigo-600 text-white' : 'text-secondary hover:bg-white/5'}`}
                         >
-                          Perakende Satış
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setSaleType('cari');
-                            if (customers.length > 0) {
-                              setSelectedCariId(customers[0].id);
-                              setPaymentMethod('Cari (Borç)');
-                            }
-                          }}
-                          className={`py-2 px-1.5 rounded-md font-semibold text-center transition-colors ${saleType === 'cari' ? 'bg-indigo-600 text-white' : 'text-secondary hover:bg-white/5'}`}
-                        >
-                          Cari / Kurumsal
+                          Satış
                         </button>
                         <button 
                           onClick={() => setSaleType('gider')}
