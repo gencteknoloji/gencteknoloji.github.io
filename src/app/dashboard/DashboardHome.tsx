@@ -3701,17 +3701,17 @@ export default function DashboardHome() {
                   return (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
                       <div className="glass-panel p-4 bg-gradient-to-r from-indigo-950/20 to-indigo-900/10 border border-indigo-500/10">
-                        <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block font-bold text-indigo-300">Toplam Stok Tutarı (Cihaz Alış)</span>
+                        <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block font-bold text-indigo-300">Cihaz Alış Tutarı</span>
                         <h3 className="text-xl font-extrabold text-white mt-1">{totalDeviceStockCost.toLocaleString('tr-TR')} TL</h3>
                         <span className="text-[10px] text-indigo-400 font-mono">{deviceCount} Adet cihaz envanteri</span>
                       </div>
                       <div className="glass-panel p-4 bg-gradient-to-r from-emerald-950/20 to-emerald-900/10 border border-emerald-500/10">
-                        <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block font-bold text-emerald-300">Toplam Stok Satış Tutarı (Cihaz Satış)</span>
+                        <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block font-bold text-emerald-300">Cihaz Satış Tutarı</span>
                         <h3 className="text-xl font-extrabold text-emerald-400 mt-1">{totalDeviceStockSale.toLocaleString('tr-TR')} TL</h3>
                         <span className="text-[10px] text-emerald-500/80 font-mono">Beklenen toplam ciro</span>
                       </div>
                       <div className="glass-panel p-4 bg-gradient-to-r from-slate-900/40 to-slate-800/20 border border-white/5">
-                        <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Genel Envanter Stok Değeri (Alış)</span>
+                        <span className="text-[10px] font-semibold text-muted uppercase tracking-wider block">Genel Stok Değeri</span>
                         <h3 className="text-xl font-extrabold text-slate-300 mt-1">{(totalDeviceStockCost + totalAccessoryStockCost).toLocaleString('tr-TR')} TL</h3>
                         <span className="text-[10px] text-secondary">Cihazlar + Aksesuarlar</span>
                       </div>
@@ -3725,7 +3725,7 @@ export default function DashboardHome() {
                     <div className="glass-panel p-6 w-full max-w-md bg-slate-900 border border-white/10 animate-fade-in text-xs">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-sm font-bold text-white">
-                          {newProduct.type === 'Cihaz' ? '📱 Yeni Stoklu Cihaz Girişi' : newProduct.type === 'Hizmet' ? '🛠️ Yeni Stoksuz Hizmet Girişi' : '📦 Yeni Stoksuz Ürün Girişi'}
+                          {newProduct.type === 'Cihaz' ? '📱 Yeni Cihaz Girişi' : newProduct.type === 'Hizmet' ? '🛠️ Yeni Hizmet Girişi' : '📦 Yeni Ürün Girişi'}
                         </h3>
                         <button onClick={() => setShowAddProduct(false)} className="text-secondary hover:text-white">
                           <X size={16} />
@@ -3750,9 +3750,9 @@ export default function DashboardHome() {
                                 });
                               }}
                             >
-                              <option value="Cihaz">📱 Stoklu Cihaz (Telefon / Tablet)</option>
-                              <option value="Ürün">📦 Stoksuz Ürün (Aksesuar vb.)</option>
-                              <option value="Hizmet">🛠️ Stoksuz Hizmet (Tamir / Servis)</option>
+                              <option value="Cihaz">📱 Cihaz</option>
+                              <option value="Ürün">📦 Ürün</option>
+                              <option value="Hizmet">🛠️ Hizmet</option>
                             </select>
                           </div>
                           <div>
@@ -3796,7 +3796,7 @@ export default function DashboardHome() {
 
                         <div>
                           <label className="text-[10px] text-secondary block mb-1">
-                            {newProduct.type === 'Cihaz' ? 'Telefon İsmi (Marka / Model)*' : 'Ürün / Hizmet Adı*'}
+                            {newProduct.type === 'Cihaz' ? 'Cihaz Adı*' : 'Ürün / Hizmet Adı*'}
                           </label>
                           <input 
                             type="text" 
@@ -3810,7 +3810,7 @@ export default function DashboardHome() {
 
                         {newProduct.type === 'Cihaz' && (
                           <div>
-                            <label className="text-[10px] text-secondary block mb-1">IMEI Numarası (15 Haneli)</label>
+                            <label className="text-[10px] text-secondary block mb-1">IMEI Numarası</label>
                             <input 
                               type="text" 
                               maxLength={15}
@@ -3836,7 +3836,7 @@ export default function DashboardHome() {
                               />
                             ) : (
                               <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
-                                ℹ️ <strong className="text-amber-300">{newProduct.type === 'Hizmet' ? 'Stoksuz Hizmet' : 'Stoksuz Ürün'}</strong> (Stok takibi yapılmaz)
+                                ℹ️ <strong className="text-amber-300">{newProduct.type === 'Hizmet' ? 'Hizmet' : 'Ürün'}</strong>
                               </div>
                             )}
                           </div>
@@ -3989,7 +3989,7 @@ export default function DashboardHome() {
                   </div>
                 )}
 
-                {/* Sub-tab Navigation: Stoklu Cihazlar / Stoksuz Ürünler / Stoksuz Hizmetler */}
+                {/* Sub-tab Navigation: Cihazlar / Aksesuarlar / Hizmetler */}
                 <div className="flex border-b border-white/10 mb-5 gap-2 overflow-x-auto">
                   <button
                     onClick={() => setInventorySubTab('stocked')}
@@ -4000,7 +4000,7 @@ export default function DashboardHome() {
                     }`}
                   >
                     <Smartphone size={15} />
-                    <span>📱 Stoklu Cihazlar (Telefon / Tablet)</span>
+                    <span>📱 Cihazlar</span>
                     <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
                       {loadedCategories['device'] ? (folderProducts.device?.length || 0) : (metrics.deviceCount ?? 0)}
                     </span>
@@ -4014,7 +4014,7 @@ export default function DashboardHome() {
                     }`}
                   >
                     <Package size={15} />
-                    <span>📦 Stoksuz Ürünler (Aksesuarlar)</span>
+                    <span>📦 Aksesuarlar</span>
                     <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
                       {(loadedCategories['kilif'] || loadedCategories['cam'] || loadedCategories['sarj'] || loadedCategories['kulaklik'] || loadedCategories['diger'])
                         ? ((folderProducts.kilif?.length || 0) + (folderProducts.cam?.length || 0) + (folderProducts.sarj?.length || 0) + (folderProducts.kulaklik?.length || 0) + (folderProducts.diger?.length || 0))
@@ -4030,7 +4030,7 @@ export default function DashboardHome() {
                     }`}
                   >
                     <Users size={15} />
-                    <span>🛠️ Stoksuz Hizmetler (Tamir / Teknik Servis)</span>
+                    <span>🛠️ Hizmetler</span>
                     <span className="bg-cyan-500/20 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
                       {loadedCategories['hizmet'] ? (folderProducts.hizmet?.length || 0) : (metrics.serviceCount ?? 0)}
                     </span>
@@ -4247,7 +4247,7 @@ export default function DashboardHome() {
                         <>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/20">
                             <div>
-                              <h4 className="text-xs font-bold text-indigo-300">📱 Stoklu Cihaz Envanteri</h4>
+                              <h4 className="text-xs font-bold text-indigo-300">📱 Cihazlar</h4>
                               <p className="text-[11px] text-slate-400">Telefon ve tablet gibi IMEI/seri numarasıyla takip edilen stoklu cihazlar.</p>
                             </div>
                             <button
@@ -4274,7 +4274,7 @@ export default function DashboardHome() {
                           </div>
                           {renderFolder({
                             folderKey: 'device',
-                            title: '📱 Cihazlar / Telefonlar / Tabletler (Stoklu Cihazlar)',
+                            title: '📱 Cihazlar',
                             products: folderProducts.device,
                             isOpen: deviceFolderOpen,
                             setOpen: setDeviceFolderOpen,
@@ -4288,7 +4288,7 @@ export default function DashboardHome() {
                         <>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/20">
                             <div>
-                              <h4 className="text-xs font-bold text-cyan-300">🛠️ Stoksuz Hizmet & Teknik Servis Listesi</h4>
+                              <h4 className="text-xs font-bold text-cyan-300">🛠️ Hizmetler</h4>
                               <p className="text-[11px] text-slate-400">Tamir, teknik servis, işçilik, kontör ve bakım gibi stok takibi yapılmayan hizmetler.</p>
                             </div>
                             <button
@@ -4315,7 +4315,7 @@ export default function DashboardHome() {
                           </div>
                           {renderFolder({
                             folderKey: 'hizmet',
-                            title: '🛠️ Tamir, Teknik Servis & Hizmetler (Stoksuz Hizmet)',
+                            title: '🛠️ Hizmetler',
                             products: folderProducts.hizmet,
                             isOpen: hizmetFolderOpen,
                             setOpen: setHizmetFolderOpen,
@@ -4329,7 +4329,7 @@ export default function DashboardHome() {
                         <>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/20">
                             <div>
-                              <h4 className="text-xs font-bold text-emerald-300">📦 Stoksuz Aksesuar & Ürün Listesi</h4>
+                              <h4 className="text-xs font-bold text-emerald-300">📦 Aksesuarlar</h4>
                               <p className="text-[11px] text-slate-400">Kılıf, cam, şarj, kulaklık ve diğer hızlı satış aksesuarları.</p>
                             </div>
                             <button
@@ -4356,7 +4356,7 @@ export default function DashboardHome() {
                           </div>
                           {renderFolder({
                             folderKey: 'kilif',
-                            title: 'Telefon Kılıfları (Stoksuz Ürün)',
+                            title: 'Telefon Kılıfları',
                             products: folderProducts.kilif,
                             isOpen: kiliffFolderOpen,
                             setOpen: setKiliffFolderOpen,
@@ -4367,7 +4367,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'cam',
-                            title: 'Telefon Kırılmaz Camları (Stoksuz Ürün)',
+                            title: 'Telefon Kırılmaz Camları',
                             products: folderProducts.cam,
                             isOpen: camFolderOpen,
                             setOpen: setCamFolderOpen,
@@ -4378,7 +4378,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'sarj',
-                            title: 'Şarj Cihazları ve Kablolar (Stoksuz Ürün)',
+                            title: 'Şarj Cihazları ve Kablolar',
                             products: folderProducts.sarj,
                             isOpen: sarjFolderOpen,
                             setOpen: setSarjFolderOpen,
@@ -4389,7 +4389,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'kulaklik',
-                            title: 'Bluetooth Kulaklıklar (Stoksuz Ürün)',
+                            title: 'Bluetooth Kulaklıklar',
                             products: folderProducts.kulaklik,
                             isOpen: kulaklikFolderOpen,
                             setOpen: setKulaklikFolderOpen,
@@ -4400,7 +4400,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'diger',
-                            title: 'Diğer Ürünler (Stoksuz Ürün)',
+                            title: 'Diğer Ürünler',
                             products: folderProducts.diger,
                             isOpen: digerFolderOpen,
                             setOpen: setDigerFolderOpen,
@@ -6262,9 +6262,9 @@ export default function DashboardHome() {
                       });
                     }}
                   >
-                    <option value="Cihaz">📱 Stoklu Cihaz (Telefon / Tablet)</option>
-                    <option value="Ürün">📦 Stoksuz Ürün (Aksesuar vb.)</option>
-                    <option value="Hizmet">🛠️ Stoksuz Hizmet (Tamir / Servis)</option>
+                    <option value="Cihaz">📱 Cihaz</option>
+                    <option value="Ürün">📦 Ürün</option>
+                    <option value="Hizmet">🛠️ Hizmet</option>
                   </select>
                 </div>
                 <div>
@@ -6308,7 +6308,7 @@ export default function DashboardHome() {
 
               <div>
                 <label className="text-[10px] text-secondary block mb-1">
-                  {editProductData.type === 'Cihaz' ? 'Telefon İsmi (Marka / Model)*' : 'Ürün / Hizmet Adı*'}
+                  {editProductData.type === 'Cihaz' ? 'Cihaz Adı*' : 'Ürün / Hizmet Adı*'}
                 </label>
                 <input 
                   type="text" 
@@ -6322,7 +6322,7 @@ export default function DashboardHome() {
 
               {editProductData.type === 'Cihaz' && (
                 <div>
-                  <label className="text-[10px] text-secondary block mb-1">IMEI Numarası (15 Haneli)</label>
+                  <label className="text-[10px] text-secondary block mb-1">IMEI Numarası</label>
                   <input 
                     type="text" 
                     maxLength={15}
@@ -6348,7 +6348,7 @@ export default function DashboardHome() {
                     />
                   ) : (
                     <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
-                      ℹ️ <strong className="text-amber-300">{editProductData.type === 'Hizmet' ? 'Stoksuz Hizmet' : 'Stoksuz Ürün'}</strong> (Stok takibi yapılmaz)
+                      ℹ️ <strong className="text-amber-300">{editProductData.type === 'Hizmet' ? 'Hizmet' : 'Ürün'}</strong>
                     </div>
                   )}
                 </div>
