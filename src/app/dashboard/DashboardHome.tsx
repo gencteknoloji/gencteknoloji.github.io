@@ -3925,9 +3925,6 @@ export default function DashboardHome() {
                           {prod.type === 'Cihaz' && prod.imei && (
                             <div className="text-[10px] font-mono text-indigo-400 mt-0.5">IMEI: {prod.imei}</div>
                           )}
-                          {prod.barcode && (
-                            <div className="text-[10px] font-mono text-secondary mt-0.5">Barkod: {prod.barcode}</div>
-                          )}
                           {Boolean(prod.is_no_profit || prod.name?.toUpperCase().includes('KONTÖR') || prod.name?.toUpperCase().includes('KONTOR')) && (
                             <div className="mt-1">
                               <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25">
@@ -3962,13 +3959,6 @@ export default function DashboardHome() {
                         </td>
                         <td className="p-3 text-right whitespace-nowrap">
                           <div className="flex justify-end gap-1.5">
-                            <button
-                              onClick={() => handlePrintBarcode(prod)}
-                              className="px-2 py-1 rounded bg-white/2 hover:bg-white/5 text-[10px] text-white border border-white/5 font-semibold cursor-pointer flex items-center gap-1"
-                            >
-                              <Barcode size={11} />
-                              <span>Barkod</span>
-                            </button>
                             <button
                               onClick={() => { setEditProductData(prod); setShowEditProduct(true); }}
                               className="px-2 py-1 rounded bg-white/2 hover:bg-white/5 text-[10px] text-white border border-white/5 font-semibold cursor-pointer"
