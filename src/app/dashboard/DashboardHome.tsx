@@ -527,7 +527,7 @@ export default function DashboardHome() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showEditProduct, setShowEditProduct] = useState(false);
   const [editProductData, setEditProductData] = useState<EditableProduct | null>(null);
-  const [newProduct, setNewProduct] = useState<ProductForm>({ type: 'Diğer', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20', is_no_profit: false });
+  const [newProduct, setNewProduct] = useState<ProductForm>({ type: 'Ürün', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20', is_no_profit: false });
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<Product | null>(null);
   const [deviceFolderOpen, setDeviceFolderOpen] = useState(false);
   const [kiliffFolderOpen, setKiliffFolderOpen] = useState(false);
@@ -3596,7 +3596,7 @@ export default function DashboardHome() {
                           <div>
                             <label className="text-[10px] text-secondary block mb-1">Stok Tipi*</label>
                             <select 
-                              className="custom-input"
+                              className="custom-input font-bold"
                               value={newProduct.type}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -3606,13 +3606,13 @@ export default function DashboardHome() {
                                   category: val === 'Cihaz' ? 'Telefon' : val === 'Hizmet' ? 'Tamir & Teknik Servis' : 'Telefon Kılıfı',
                                   imei: '',
                                   barcode: '',
-                                  stock: val === 'Cihaz' ? '1' : val === 'Hizmet' ? '0' : ''
+                                  stock: val === 'Cihaz' ? '1' : '0'
                                 });
                               }}
                             >
-                              <option value="Diğer">Diğer (Aksesuar/Stok)</option>
-                              <option value="Cihaz">Cihaz (Telefon / Tablet)</option>
-                              <option value="Hizmet">Hizmet (Tamir / Teknik Servis)</option>
+                              <option value="Cihaz">📱 Stoklu Cihaz (Telefon / Tablet)</option>
+                              <option value="Ürün">📦 Stoksuz Ürün (Aksesuar vb.)</option>
+                              <option value="Hizmet">🛠️ Stoksuz Hizmet (Tamir / Servis)</option>
                             </select>
                           </div>
                           <div>
@@ -3633,6 +3633,7 @@ export default function DashboardHome() {
                                 onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
                               >
                                 <option value="Tamir & Teknik Servis">Tamir & Teknik Servis</option>
+                                <option value="İşçilik & Hizmet">İşçilik & Hizmet</option>
                               </select>
                             ) : (
                               <select 
@@ -3646,8 +3647,7 @@ export default function DashboardHome() {
                                 <option value="Şarj Kablosu">Şarj Kablosu</option>
                                 <option value="Bluetooth Kulaklık">Bluetooth Kulaklık</option>
                                 <option value="Hazır Kart">Hazır Kart</option>
-                                <option value="Tamir & Teknik Servis">Tamir & Teknik Servis</option>
-                                <option value="Diğer">Diğer</option>
+                                <option value="Diğer">Diğer Aksesuar</option>
                               </select>
                             )}
                           </div>
@@ -6015,7 +6015,7 @@ export default function DashboardHome() {
                 <div>
                   <label className="text-[10px] text-secondary block mb-1">Stok Tipi*</label>
                   <select 
-                    className="custom-input"
+                    className="custom-input font-bold"
                     value={editProductData.type}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -6024,13 +6024,13 @@ export default function DashboardHome() {
                         type: val,
                         category: val === 'Cihaz' ? 'Telefon' : val === 'Hizmet' ? 'Tamir & Teknik Servis' : 'Telefon Kılıfı',
                         imei: val !== 'Cihaz' ? null : editProductData.imei,
-                        stock: val === 'Cihaz' ? 1 : val === 'Hizmet' ? 0 : editProductData.stock
+                        stock: val === 'Cihaz' ? 1 : 0
                       });
                     }}
                   >
-                    <option value="Diğer">Diğer (Aksesuar/Stok)</option>
-                    <option value="Cihaz">Cihaz (Telefon / Tablet)</option>
-                    <option value="Hizmet">Hizmet (Tamir / Teknik Servis)</option>
+                    <option value="Cihaz">📱 Stoklu Cihaz (Telefon / Tablet)</option>
+                    <option value="Ürün">📦 Stoksuz Ürün (Aksesuar vb.)</option>
+                    <option value="Hizmet">🛠️ Stoksuz Hizmet (Tamir / Servis)</option>
                   </select>
                 </div>
                 <div>
@@ -6051,6 +6051,7 @@ export default function DashboardHome() {
                       onChange={(e) => setEditProductData({ ...editProductData, category: e.target.value })}
                     >
                       <option value="Tamir & Teknik Servis">Tamir & Teknik Servis</option>
+                      <option value="İşçilik & Hizmet">İşçilik & Hizmet</option>
                     </select>
                   ) : (
                     <select 
@@ -6064,8 +6065,7 @@ export default function DashboardHome() {
                       <option value="Şarj Kablosu">Şarj Kablosu</option>
                       <option value="Bluetooth Kulaklık">Bluetooth Kulaklık</option>
                       <option value="Hazır Kart">Hazır Kart</option>
-                      <option value="Tamir & Teknik Servis">Tamir & Teknik Servis</option>
-                      <option value="Diğer">Diğer</option>
+                      <option value="Diğer">Diğer Aksesuar</option>
                     </select>
                   )}
                 </div>
