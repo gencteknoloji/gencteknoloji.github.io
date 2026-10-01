@@ -3625,6 +3625,7 @@ export default function DashboardHome() {
                               >
                                 <option value="Telefon">Telefon</option>
                                 <option value="Tablet">Tablet</option>
+                                <option value="Diğer">Diğer</option>
                               </select>
                             ) : newProduct.type === 'Hizmet' ? (
                               <select 
@@ -6043,6 +6044,7 @@ export default function DashboardHome() {
                     >
                       <option value="Telefon">Telefon</option>
                       <option value="Tablet">Tablet</option>
+                      <option value="Diğer">Diğer</option>
                     </select>
                   ) : editProductData.type === 'Hizmet' ? (
                     <select 
