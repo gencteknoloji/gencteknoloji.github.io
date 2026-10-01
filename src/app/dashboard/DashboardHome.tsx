@@ -525,7 +525,7 @@ export default function DashboardHome() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showEditProduct, setShowEditProduct] = useState(false);
   const [editProductData, setEditProductData] = useState<EditableProduct | null>(null);
-  const [newProduct, setNewProduct] = useState<ProductForm>({ type: 'Diğer', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20' });
+  const [newProduct, setNewProduct] = useState<ProductForm>({ type: 'Diğer', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20', is_no_profit: false });
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<Product | null>(null);
   const [deviceFolderOpen, setDeviceFolderOpen] = useState(false);
   const [kiliffFolderOpen, setKiliffFolderOpen] = useState(false);
@@ -1454,19 +1454,25 @@ export default function DashboardHome() {
     if (!newProduct.name) return;
 
     try {
+      const isNoProfit = Boolean(
+        newProduct.is_no_profit ||
+        newProduct.name.trim().toLowerCase().includes('kontör') ||
+        newProduct.name.trim().toLowerCase().includes('kontor')
+      );
       const prod = {
         ...newProduct,
         imei: newProduct.imei && newProduct.imei.trim() !== '' ? newProduct.imei.trim() : null,
         barcode: newProduct.barcode && newProduct.barcode.trim() !== '' ? newProduct.barcode.trim() : null,
         stock: newProduct.type === 'Cihaz' ? 1 : newProduct.type === 'Hizmet' ? 0 : toInt(newProduct.stock),
-        purchase_price: toNum(newProduct.purchase_price) || 0,
+        purchase_price: isNoProfit ? (toNum(newProduct.sale_price) || 0) : (toNum(newProduct.purchase_price) || 0),
         sale_price: toNum(newProduct.sale_price) || 0,
-        kdv_ratio: toInt(newProduct.kdv_ratio, 20)
+        kdv_ratio: toInt(newProduct.kdv_ratio, 20),
+        is_no_profit: isNoProfit ? 1 : 0
       };
 
       await dbService.addProduct(prod);
       setShowAddProduct(false);
-      setNewProduct({ type: 'Diğer', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20' });
+      setNewProduct({ type: 'Diğer', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20', is_no_profit: false });
       await loadAllData();
     } catch (err: unknown) {
       alert(getErrorMessage(err));
@@ -1654,14 +1660,20 @@ export default function DashboardHome() {
       `"${editProductData.name}" stok kartı bilgilerini güncellemek istediğinize emin misiniz?`,
       async () => {
         try {
+          const isNoProfit = Boolean(
+            editProductData.is_no_profit ||
+            editProductData.name.trim().toLowerCase().includes('kontör') ||
+            editProductData.name.trim().toLowerCase().includes('kontor')
+          );
           const prod = {
             ...editProductData,
             imei: editProductData.imei && editProductData.imei.trim() !== '' ? editProductData.imei.trim() : null,
             barcode: editProductData.barcode && editProductData.barcode.trim() !== '' ? editProductData.barcode.trim() : null,
             stock: editProductData.type === 'Cihaz' ? 1 : editProductData.type === 'Hizmet' ? 0 : toInt(editProductData.stock),
-            purchase_price: toNum(editProductData.purchase_price) || 0,
+            purchase_price: isNoProfit ? (toNum(editProductData.sale_price) || 0) : (toNum(editProductData.purchase_price) || 0),
             sale_price: toNum(editProductData.sale_price) || 0,
-            kdv_ratio: toInt(editProductData.kdv_ratio, 20)
+            kdv_ratio: toInt(editProductData.kdv_ratio, 20),
+            is_no_profit: isNoProfit ? 1 : 0
           };
 
           await dbService.updateProduct(editProductData.id, prod);
@@ -2906,7 +2918,7 @@ export default function DashboardHome() {
                   return (
                     <div className="flex flex-col gap-6">
                       {/* Metrik Kartları */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="glass-panel p-4 border border-white/5 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 relative overflow-hidden group">
                           <div className="absolute right-0 bottom-0 translate-x-2 translate-y-2 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                             <TrendingUp size={120} />
@@ -2926,12 +2938,6 @@ export default function DashboardHome() {
                           <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">Kredi Kartı Satış</span>
                           <h3 className="text-2xl font-black text-white mt-1.5 font-mono">{cardRevenue.toLocaleString('tr-TR')} TL</h3>
                           <p className="text-[10px] text-secondary mt-1">POS Cihazı Toplamı</p>
-                        </div>
-
-                        <div className="glass-panel p-4 border border-white/5 bg-gradient-to-br from-amber-600/10 to-orange-600/10 relative overflow-hidden group">
-                          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Cari / Veresiye</span>
-                          <h3 className="text-2xl font-black text-white mt-1.5 font-mono">{cariRevenue.toLocaleString('tr-TR')} TL</h3>
-                          <p className="text-[10px] text-secondary mt-1">Müşteri Hesabına Borç</p>
                         </div>
                       </div>
 
@@ -3718,6 +3724,39 @@ export default function DashboardHome() {
                           </div>
                         </div>
 
+                        {/* Kârsız Satış Butonu */}
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                          <div>
+                            <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                              <span>⚡ Kârsız Satış (Kâr Marjı %0)</span>
+                              {newProduct.is_no_profit && (
+                                <span className="bg-amber-500/30 text-amber-200 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/40">Aktif</span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              Kontör, fatura vb. kârı olmayan ürünler için kârı 0 hesaplar, alış ve satışı eşitler.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextVal = !newProduct.is_no_profit;
+                              setNewProduct({
+                                ...newProduct,
+                                is_no_profit: nextVal,
+                                purchase_price: nextVal && newProduct.sale_price ? newProduct.sale_price : newProduct.purchase_price
+                              });
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              newProduct.is_no_profit
+                                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                                : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                            }`}
+                          >
+                            {newProduct.is_no_profit ? '✓ Kârsız Ürün' : '+ Kârsız Satış'}
+                          </button>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] text-secondary block mb-1">Alış Fiyatı (KDV Hariç - TL)</label>
@@ -3763,7 +3802,11 @@ export default function DashboardHome() {
                                 if (isNaN(excl)) return;
                                 const ratio = toInt(newProduct.kdv_ratio, 20);
                                 const incl = excl * (1 + ratio / 100);
-                                setNewProduct({ ...newProduct, sale_price: incl.toFixed(2) });
+                                setNewProduct({ 
+                                  ...newProduct, 
+                                  sale_price: incl.toFixed(2),
+                                  purchase_price: newProduct.is_no_profit ? incl.toFixed(2) : newProduct.purchase_price
+                                });
                               }}
                               defaultValue={newProduct.sale_price ? (toNum(newProduct.sale_price) / (1 + toInt(newProduct.kdv_ratio, 20) / 100)).toFixed(2) : ''}
                               key={'np-prod-sale-excl-' + (newProduct.kdv_ratio ?? '20')}
@@ -3777,7 +3820,14 @@ export default function DashboardHome() {
                               placeholder="0.00" 
                               className="custom-input font-bold text-emerald-400"
                               value={newProduct.sale_price}
-                              onChange={(e) => setNewProduct({ ...newProduct, sale_price: e.target.value })}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setNewProduct({ 
+                                  ...newProduct, 
+                                  sale_price: val,
+                                  purchase_price: newProduct.is_no_profit ? val : newProduct.purchase_price
+                                });
+                              }}
                             />
                           </div>
                         </div>
@@ -3826,6 +3876,13 @@ export default function DashboardHome() {
                         )}
                         {prod.barcode && (
                           <div className="text-[10px] font-mono text-secondary mt-0.5">Barkod: {prod.barcode}</div>
+                        )}
+                        {Boolean(prod.is_no_profit || prod.name?.toUpperCase().includes('KONTÖR') || prod.name?.toUpperCase().includes('KONTOR')) && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                              ⚡ Kârsız Satış (Kâr: %0)
+                            </span>
+                          </div>
                         )}
                       </td>
                       <td className="p-3 text-center">
@@ -6002,6 +6059,39 @@ export default function DashboardHome() {
                 </div>
               </div>
 
+              {/* Kârsız Satış Butonu */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <div>
+                  <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <span>⚡ Kârsız Satış (Kâr Marjı %0)</span>
+                    {Boolean(editProductData.is_no_profit) && (
+                      <span className="bg-amber-500/30 text-amber-200 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/40">Aktif</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Kontör, fatura vb. kârı olmayan ürünler için kârı 0 hesaplar, alış ve satışı eşitler.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !editProductData.is_no_profit;
+                    setEditProductData({
+                      ...editProductData,
+                      is_no_profit: nextVal ? 1 : 0,
+                      purchase_price: nextVal && editProductData.sale_price ? editProductData.sale_price : editProductData.purchase_price
+                    });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    editProductData.is_no_profit
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                  }`}
+                >
+                  {editProductData.is_no_profit ? '✓ Kârsız Ürün' : '+ Kârsız Satış'}
+                </button>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] text-secondary block mb-1">Alış Fiyatı (KDV Hariç - TL)</label>
@@ -6047,7 +6137,11 @@ export default function DashboardHome() {
                       if (isNaN(excl)) return;
                       const ratio = toInt(editProductData.kdv_ratio, 20);
                       const incl = excl * (1 + ratio / 100);
-                      setEditProductData({ ...editProductData, sale_price: incl.toFixed(2) });
+                      setEditProductData({ 
+                        ...editProductData, 
+                        sale_price: incl.toFixed(2),
+                        purchase_price: editProductData.is_no_profit ? incl.toFixed(2) : editProductData.purchase_price
+                      });
                     }}
                     defaultValue={editProductData.sale_price ? (toNum(editProductData.sale_price) / (1 + toInt(editProductData.kdv_ratio, 20) / 100)).toFixed(2) : ''}
                     key={'ep-sale-excl-' + (editProductData.kdv_ratio ?? '20') + '-' + editProductData.id}
@@ -6061,7 +6155,14 @@ export default function DashboardHome() {
                     placeholder="0.00" 
                     className="custom-input font-bold text-emerald-400"
                     value={editProductData.sale_price}
-                    onChange={(e) => setEditProductData({ ...editProductData, sale_price: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditProductData({ 
+                        ...editProductData, 
+                        sale_price: val,
+                        purchase_price: editProductData.is_no_profit ? val : editProductData.purchase_price
+                      });
+                    }}
                   />
                 </div>
               </div>
