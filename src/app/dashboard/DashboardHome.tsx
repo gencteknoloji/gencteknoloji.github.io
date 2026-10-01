@@ -1382,6 +1382,10 @@ export default function DashboardHome() {
     const exists = saleItems.find(item => item.product_id === prod.id);
     const newQty = exists ? exists.quantity + 1 : 1;
 
+    const displayName = (prod.type === 'Cihaz' || ['Telefon', 'Tablet'].includes(prod.category)) && prod.imei
+      ? (prod.name.includes(prod.imei) ? prod.name : `${prod.name} (IMEI: ${prod.imei})`)
+      : prod.name;
+
     if (exists) {
       setSaleItems(saleItems.map(item => 
         item.product_id === prod.id ? { ...item, quantity: newQty } : item
@@ -1389,7 +1393,7 @@ export default function DashboardHome() {
     } else {
       setSaleItems([...saleItems, {
         product_id: prod.id,
-        name: prod.name,
+        name: displayName,
         price: prod.sale_price,
         quantity: 1
       }]);
@@ -1406,25 +1410,33 @@ export default function DashboardHome() {
     
     // Auto-detect product if not selected via dropdown
     let targetProductId = selectedProductIdForManual;
+    let finalItemName = manualItem.name.trim();
+
     if (!targetProductId || targetProductId === 'manual') {
-      const cleanName = manualItem.name.trim().toLowerCase();
+      const cleanInput = manualItem.name.trim();
+      const cleanName = cleanInput.toLowerCase();
       const matched = checkoutProducts.find(p => 
-        p.name.trim().toLowerCase() === cleanName ||
-        (p.barcode && p.barcode.trim() === manualItem.name.trim()) ||
-        (p.imei && p.imei.trim() === manualItem.name.trim())
+        (p.imei && (p.imei.trim() === cleanInput || cleanInput.includes(p.imei.trim()))) ||
+        (p.barcode && p.barcode.trim() === cleanInput) ||
+        p.name.trim().toLowerCase() === cleanName
       ) || products.find(p => 
-        p.name.trim().toLowerCase() === cleanName ||
-        (p.barcode && p.barcode.trim() === manualItem.name.trim()) ||
-        (p.imei && p.imei.trim() === manualItem.name.trim())
+        (p.imei && (p.imei.trim() === cleanInput || cleanInput.includes(p.imei.trim()))) ||
+        (p.barcode && p.barcode.trim() === cleanInput) ||
+        p.name.trim().toLowerCase() === cleanName
       );
       if (matched) {
         targetProductId = matched.id;
+        if (matched.imei) {
+          finalItemName = matched.name.includes(matched.imei) ? matched.name : `${matched.name} (IMEI: ${matched.imei})`;
+        } else {
+          finalItemName = matched.name;
+        }
       }
     }
 
     setSaleItems([...saleItems, {
       product_id: targetProductId || 'manual',
-      name: manualItem.name,
+      name: finalItemName,
       price: toNum(manualItem.price) || 0,
       quantity: qty
     }]);
@@ -2440,8 +2452,11 @@ export default function DashboardHome() {
                                       key={prod.id}
                                       type="button"
                                       onClick={() => {
+                                        const displayName = (prod.type === 'Cihaz' || ['Telefon', 'Tablet'].includes(prod.category)) && prod.imei
+                                          ? (prod.name.includes(prod.imei) ? prod.name : `${prod.name} (IMEI: ${prod.imei})`)
+                                          : prod.name;
                                         setManualItem({
-                                          name: prod.name,
+                                          name: displayName,
                                           price: prod.sale_price.toString(),
                                           quantity: '1'
                                         });
