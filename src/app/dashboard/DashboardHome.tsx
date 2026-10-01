@@ -1247,11 +1247,12 @@ export default function DashboardHome() {
       return;
     }
     try {
+      const cleanPerms = newUserPermissions.filter(p => ALL_TABS.some(t => t.key === p));
       await dbService.createUser({
         username: newUsername,
         password: newPassword,
         role: newUserRole,
-        permissions: newUserPermissions
+        permissions: cleanPerms
       });
       alert('Kullanıcı başarıyla oluşturuldu.');
       setShowAddUser(false);
@@ -1271,6 +1272,7 @@ export default function DashboardHome() {
       alert('Lütfen kullanıcı adı ve rol alanlarını doldurun!');
       return;
     }
+    const cleanPerms = (editUserData.permissions || []).filter(p => ALL_TABS.some(t => t.key === p));
     triggerConfirm(
       'Kullanıcıyı Güncelle',
       `"${editUserData.username}" kullanıcısının bilgilerini güncellemek istediğinize emin misiniz?`,
@@ -1281,7 +1283,7 @@ export default function DashboardHome() {
             username: editUserData.username,
             password: editUserPassword,
             role: editUserData.role,
-            permissions: editUserData.permissions
+            permissions: cleanPerms
           });
           alert('Kullanıcı başarıyla güncellendi.');
           setShowEditUser(false);
@@ -1293,7 +1295,7 @@ export default function DashboardHome() {
               ...currentUser,
               username: editUserData.username,
               role: editUserData.role,
-              permissions: editUserData.permissions
+              permissions: cleanPerms
             };
             localStorage.setItem('currentUser', JSON.stringify(updatedUser));
             setCurrentUser(updatedUser);
@@ -5842,7 +5844,11 @@ export default function DashboardHome() {
                           <td className="py-3.5 max-w-xs sm:max-w-md truncate text-secondary">
                             {u.role === 'Admin' ? 'Tüm Sekmeler (Yönetici)' : (
                               u.permissions && u.permissions.length > 0 
-                                ? u.permissions.map(p => ALL_TABS.find(t => t.key === p)?.label || p).join(', ')
+                                ? u.permissions
+                                    .filter(p => ALL_TABS.some(t => t.key === p))
+                                    .map(p => ALL_TABS.find(t => t.key === p)?.label)
+                                    .filter(Boolean)
+                                    .join(', ') || 'Sekme Yetkisi Yok'
                                 : 'Sekme Yetkisi Yok'
                             )}
                           </td>
@@ -5850,7 +5856,8 @@ export default function DashboardHome() {
                             <div className="flex justify-end gap-2">
                               <button 
                                 onClick={() => {
-                                  setEditUserData({ ...u });
+                                  const validPerms = (u.permissions || []).filter(p => ALL_TABS.some(t => t.key === p));
+                                  setEditUserData({ ...u, permissions: validPerms });
                                   setEditUserPassword('');
                                   setShowEditUser(true);
                                 }}
