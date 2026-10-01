@@ -9,6 +9,7 @@ export interface Product {
   purchase_price: number;
   sale_price: number;
   kdv_ratio: number;
+  is_no_profit?: number;
 }
 
 export interface Cari {
@@ -216,6 +217,7 @@ export interface ProductForm {
   purchase_price: string;
   sale_price: string;
   kdv_ratio: string;
+  is_no_profit?: boolean;
 }
 
 export interface CariForm {
@@ -317,4 +319,5 @@ export type ProductInput = {
   purchase_price?: string | number;
   sale_price?: string | number;
   kdv_ratio?: string | number;
+  is_no_profit?: number | boolean;
 };
