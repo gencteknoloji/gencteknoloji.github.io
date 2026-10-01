@@ -1061,20 +1061,21 @@ export const dbService = {
           'cihazSales', COALESCE((
             SELECT SUM(si.price * si.quantity) 
             FROM sale_items si 
-            JOIN products p ON si.product_id = p.id
+            LEFT JOIN products p ON si.product_id = p.id
             JOIN sales s ON si.sale_id = s.id
             WHERE s.date >= ? AND s.date <= ? AND p.type = 'Cihaz'
           ), 0),
           'aksesuarSales', COALESCE((
             SELECT SUM(si.price * si.quantity) 
             FROM sale_items si 
-            JOIN products p ON si.product_id = p.id
+            LEFT JOIN products p ON si.product_id = p.id
             JOIN sales s ON si.sale_id = s.id
             WHERE s.date >= ? AND s.date <= ? 
-              AND p.type != 'Cihaz' 
-              AND p.type != 'Hizmet' 
-              AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
-              AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır')
+              AND (p.type IS NULL OR (p.type != 'Cihaz' AND p.type != 'Hizmet'))
+              AND LOWER(TRIM(COALESCE(p.name, ''))) NOT IN ('tamir', 'tamır')
+              AND LOWER(TRIM(COALESCE(si.name, ''))) NOT IN ('tamir', 'tamır')
+              AND LOWER(TRIM(COALESCE(si.name, ''))) NOT LIKE '%tamir%'
+              AND LOWER(TRIM(COALESCE(si.name, ''))) NOT LIKE '%servis%'
           ), 0),
           'totalExpenses', COALESCE((
             SELECT SUM(amount) FROM expenses 
@@ -1085,7 +1086,7 @@ export const dbService = {
             COALESCE((
               SELECT SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) 
               FROM sale_items si 
-              JOIN products p ON si.product_id = p.id
+              LEFT JOIN products p ON si.product_id = p.id
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? AND p.type = 'Cihaz'
             ), 0) +
@@ -1093,32 +1094,39 @@ export const dbService = {
             COALESCE((
               SELECT SUM(
                 CASE 
-                  WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(p.name) LIKE '%kontör%' OR LOWER(p.name) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+                  WHEN COALESCE(p.is_no_profit, false) = true OR LOWER(COALESCE(p.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(p.name, '')) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
                   ELSE (si.price - COALESCE(p.purchase_price, 0))
                 END * si.quantity
               ) 
               FROM sale_items si 
-              JOIN products p ON si.product_id = p.id
+              LEFT JOIN products p ON si.product_id = p.id
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? 
-                AND p.type != 'Cihaz' 
-                AND p.type != 'Hizmet' 
-                AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
-                AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır')
+                AND (p.type IS NULL OR (p.type != 'Cihaz' AND p.type != 'Hizmet'))
+                AND LOWER(TRIM(COALESCE(p.name, ''))) NOT IN ('tamir', 'tamır')
+                AND LOWER(TRIM(COALESCE(si.name, ''))) NOT IN ('tamir', 'tamır')
+                AND LOWER(TRIM(COALESCE(si.name, ''))) NOT LIKE '%tamir%'
+                AND LOWER(TRIM(COALESCE(si.name, ''))) NOT LIKE '%servis%'
             ), 0) +
-            /* 3. Teknik Servis Geliri */
+            /* 3. Teknik Servis / Hizmet Kârı */
             COALESCE((
               SELECT SUM(
                 CASE 
-                  WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(p.name) LIKE '%kontör%' OR LOWER(p.name) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
-                  ELSE (si.price * si.quantity)
+                  WHEN COALESCE(p.is_no_profit, false) = true OR LOWER(COALESCE(p.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(p.name, '')) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+                  ELSE (si.price - COALESCE(p.purchase_price, 0)) * si.quantity
                 END
               ) 
               FROM sale_items si 
-              JOIN products p ON si.product_id = p.id
+              LEFT JOIN products p ON si.product_id = p.id
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? 
-                AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
+                AND (
+                  p.type = 'Hizmet' 
+                  OR LOWER(TRIM(COALESCE(p.name, ''))) IN ('tamir', 'tamır') 
+                  OR LOWER(TRIM(COALESCE(si.name, ''))) IN ('tamir', 'tamır')
+                  OR LOWER(TRIM(COALESCE(si.name, ''))) LIKE '%tamir%'
+                  OR LOWER(TRIM(COALESCE(si.name, ''))) LIKE '%servis%'
+                )
             ), 0) -
             /* 4. Tüm Giderler */
             COALESCE((
