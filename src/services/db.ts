@@ -893,8 +893,10 @@ export const dbService = {
           ), 0),
           'totalDeviceStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
           'totalDeviceStockSale', COALESCE((SELECT SUM(sale_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
-          'deviceCount', COALESCE((SELECT SUM(COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
-          'totalAccessoryStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 0)) FROM products WHERE type != 'Cihaz' AND category NOT IN ('Tablet', 'Telefon')), 0)
+          'deviceCount', COALESCE((SELECT COUNT(*) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
+          'totalAccessoryStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 0)) FROM products WHERE type != 'Cihaz' AND category NOT IN ('Tablet', 'Telefon')), 0),
+          'unstockedCount', COALESCE((SELECT COUNT(*) FROM products WHERE type NOT IN ('Cihaz', 'Hizmet') AND category NOT IN ('Tablet', 'Telefon', 'Tamir & Teknik Servis', 'İşçilik & Hizmet', 'Hizmet')), 0),
+          'serviceCount', COALESCE((SELECT COUNT(*) FROM products WHERE type = 'Hizmet' OR category IN ('Tamir & Teknik Servis', 'İşçilik & Hizmet', 'Hizmet')), 0)
         ),
         'weeklySalesRaw', COALESCE((
           SELECT json_agg(t) FROM (
@@ -939,7 +941,10 @@ export const dbService = {
         totalTurkcellProfit: 0,
         totalExpenses: 0,
         totalCihazProfit: 0,
-        totalAksesuarProfit: 0
+        totalAksesuarProfit: 0,
+        deviceCount: 0,
+        unstockedCount: 0,
+        serviceCount: 0
       },
       weeklySalesRaw: [],
       monthlySalesRaw: []

@@ -527,9 +527,9 @@ export default function DashboardHome() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showEditProduct, setShowEditProduct] = useState(false);
   const [editProductData, setEditProductData] = useState<EditableProduct | null>(null);
-  const [newProduct, setNewProduct] = useState<ProductForm>({ type: 'Ürün', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20', is_no_profit: false });
+  const [newProduct, setNewProduct] = useState<ProductForm>({ type: 'Cihaz', name: '', barcode: '', imei: '', category: 'Telefon', stock: '1', purchase_price: '', sale_price: '', kdv_ratio: '20', is_no_profit: false });
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<Product | null>(null);
-  const [deviceFolderOpen, setDeviceFolderOpen] = useState(false);
+  const [deviceFolderOpen, setDeviceFolderOpen] = useState(true);
   const [kiliffFolderOpen, setKiliffFolderOpen] = useState(false);
   const [camFolderOpen, setCamFolderOpen] = useState(false);
   const [sarjFolderOpen, setSarjFolderOpen] = useState(false);
@@ -697,17 +697,21 @@ export default function DashboardHome() {
     try {
       if (!silent) setLoading(true);
       
-      // Clear folder caches on manual action to force reload
-      if (!silent) {
-        setLoadedCategories({});
-      } else {
-        // Silently refresh open folders
-        const activeFolders = Object.keys(loadedCategories).filter(k => loadedCategories[k]) as ('device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'diger')[];
-        for (const folderKey of activeFolders) {
-          dbService.getProductsByFolder(folderKey).then(data => {
-            setFolderProducts(prev => ({ ...prev, [folderKey]: data }));
-          }).catch(err => console.error("Background folder refresh error:", err));
-        }
+      // Refresh currently open folders
+      const openFolders: ('device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'hizmet' | 'diger')[] = [];
+      if (deviceFolderOpen) openFolders.push('device');
+      if (hizmetFolderOpen) openFolders.push('hizmet');
+      if (kiliffFolderOpen) openFolders.push('kilif');
+      if (camFolderOpen) openFolders.push('cam');
+      if (sarjFolderOpen) openFolders.push('sarj');
+      if (kulaklikFolderOpen) openFolders.push('kulaklik');
+      if (digerFolderOpen) openFolders.push('diger');
+
+      for (const folderKey of openFolders) {
+        dbService.getProductsByFolder(folderKey).then(data => {
+          setFolderProducts(prev => ({ ...prev, [folderKey]: data }));
+          setLoadedCategories(prev => ({ ...prev, [folderKey]: true }));
+        }).catch(err => console.error(`Background folder refresh error (${folderKey}):`, err));
       }
 
       const initData = await dbService.getInitialData();
@@ -746,7 +750,7 @@ export default function DashboardHome() {
   };
 
   // Dynamic Folder Stock Loader
-  const loadFolderProducts = async (folderKey: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'diger') => {
+  const loadFolderProducts = async (folderKey: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'hizmet' | 'diger') => {
     setFolderLoading(prev => ({ ...prev, [folderKey]: true }));
     try {
       const data = await dbService.getProductsByFolder(folderKey);
@@ -763,37 +767,54 @@ export default function DashboardHome() {
     if (deviceFolderOpen && !loadedCategories['device']) {
       loadFolderProducts('device');
     }
-  }, [deviceFolderOpen]);
+  }, [deviceFolderOpen, loadedCategories]);
+
+  useEffect(() => {
+    if (hizmetFolderOpen && !loadedCategories['hizmet']) {
+      loadFolderProducts('hizmet');
+    }
+  }, [hizmetFolderOpen, loadedCategories]);
 
   useEffect(() => {
     if (kiliffFolderOpen && !loadedCategories['kilif']) {
       loadFolderProducts('kilif');
     }
-  }, [kiliffFolderOpen]);
+  }, [kiliffFolderOpen, loadedCategories]);
 
   useEffect(() => {
     if (camFolderOpen && !loadedCategories['cam']) {
       loadFolderProducts('cam');
     }
-  }, [camFolderOpen]);
+  }, [camFolderOpen, loadedCategories]);
 
   useEffect(() => {
     if (sarjFolderOpen && !loadedCategories['sarj']) {
       loadFolderProducts('sarj');
     }
-  }, [sarjFolderOpen]);
+  }, [sarjFolderOpen, loadedCategories]);
 
   useEffect(() => {
     if (kulaklikFolderOpen && !loadedCategories['kulaklik']) {
       loadFolderProducts('kulaklik');
     }
-  }, [kulaklikFolderOpen]);
+  }, [kulaklikFolderOpen, loadedCategories]);
 
   useEffect(() => {
     if (digerFolderOpen && !loadedCategories['diger']) {
       loadFolderProducts('diger');
     }
-  }, [digerFolderOpen]);
+  }, [digerFolderOpen, loadedCategories]);
+
+  // Auto-open primary folder when switching inventory subtabs
+  useEffect(() => {
+    if (activeTab === 'products') {
+      if (inventorySubTab === 'stocked' && !deviceFolderOpen) {
+        setDeviceFolderOpen(true);
+      } else if (inventorySubTab === 'services' && !hizmetFolderOpen) {
+        setHizmetFolderOpen(true);
+      }
+    }
+  }, [activeTab, inventorySubTab]);
 
   // Debounced Product Search for Stok Tab
   useEffect(() => {
@@ -1457,7 +1478,10 @@ export default function DashboardHome() {
   // Add New Product
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    if (!newProduct.name) return;
+    if (!newProduct.name || !newProduct.name.trim()) {
+      alert("Lütfen ürün veya hizmet adını giriniz.");
+      return;
+    }
 
     try {
       const isNoProfit = Boolean(
@@ -1467,9 +1491,10 @@ export default function DashboardHome() {
       );
       const prod = {
         ...newProduct,
+        name: newProduct.name.trim(),
         imei: newProduct.imei && newProduct.imei.trim() !== '' ? newProduct.imei.trim() : null,
         barcode: newProduct.barcode && newProduct.barcode.trim() !== '' ? newProduct.barcode.trim() : null,
-        stock: newProduct.type === 'Cihaz' ? 1 : newProduct.type === 'Hizmet' ? 0 : toInt(newProduct.stock),
+        stock: newProduct.type === 'Cihaz' ? 1 : newProduct.type === 'Hizmet' ? 0 : toInt(newProduct.stock, 0),
         purchase_price: isNoProfit ? (toNum(newProduct.sale_price) || 0) : (toNum(newProduct.purchase_price) || 0),
         sale_price: toNum(newProduct.sale_price) || 0,
         kdv_ratio: toInt(newProduct.kdv_ratio, 20),
@@ -1478,10 +1503,58 @@ export default function DashboardHome() {
 
       await dbService.addProduct(prod);
       setShowAddProduct(false);
-      setNewProduct({ type: 'Diğer', name: '', barcode: '', imei: '', category: 'Telefon Kılıfı', stock: '', purchase_price: '', sale_price: '', kdv_ratio: '20', is_no_profit: false });
-      await loadAllData();
+
+      // Determine folder key for the created product
+      let folderKeyToOpen: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'hizmet' | 'diger' = 'diger';
+      if (prod.type === 'Cihaz' || ['Tablet', 'Telefon'].includes(prod.category)) {
+        folderKeyToOpen = 'device';
+        setInventorySubTab('stocked');
+        setDeviceFolderOpen(true);
+      } else if (prod.type === 'Hizmet' || ['Tamir & Teknik Servis', 'İşçilik & Hizmet', 'Hizmet'].includes(prod.category)) {
+        folderKeyToOpen = 'hizmet';
+        setInventorySubTab('services');
+        setHizmetFolderOpen(true);
+      } else {
+        setInventorySubTab('unstocked');
+        if (prod.category === 'Telefon Kılıfı') {
+          folderKeyToOpen = 'kilif';
+          setKiliffFolderOpen(true);
+        } else if (prod.category === 'Telefon Kırılmaz Camı') {
+          folderKeyToOpen = 'cam';
+          setCamFolderOpen(true);
+        } else if (['Şarj Cihazı', 'Şarj Kablosu'].includes(prod.category)) {
+          folderKeyToOpen = 'sarj';
+          setSarjFolderOpen(true);
+        } else if (prod.category === 'Bluetooth Kulaklık') {
+          folderKeyToOpen = 'kulaklik';
+          setKulaklikFolderOpen(true);
+        } else {
+          folderKeyToOpen = 'diger';
+          setDigerFolderOpen(true);
+        }
+      }
+
+      // Reset newProduct cleanly based on created product type
+      const defaultType = folderKeyToOpen === 'device' ? 'Cihaz' : folderKeyToOpen === 'hizmet' ? 'Hizmet' : 'Ürün';
+      const defaultCat = defaultType === 'Cihaz' ? 'Telefon' : defaultType === 'Hizmet' ? 'Tamir & Teknik Servis' : 'Telefon Kılıfı';
+      setNewProduct({
+        type: defaultType,
+        name: '',
+        barcode: '',
+        imei: '',
+        category: defaultCat,
+        stock: defaultType === 'Cihaz' ? '1' : '0',
+        purchase_price: '',
+        sale_price: '',
+        kdv_ratio: '20',
+        is_no_profit: false
+      });
+
+      await loadAllData(true);
+      await loadFolderProducts(folderKeyToOpen);
+      alert("Stok kartı başarıyla eklendi!");
     } catch (err: unknown) {
-      alert(getErrorMessage(err));
+      alert("Stok eklenirken hata oluştu: " + getErrorMessage(err));
     }
   };
 
@@ -1493,7 +1566,17 @@ export default function DashboardHome() {
       async () => {
         try {
           await dbService.deleteProduct(id);
-          await loadAllData();
+          await loadAllData(true);
+          const openFolders = (['device', 'kilif', 'cam', 'sarj', 'kulaklik', 'hizmet', 'diger'] as const).filter(k => {
+            if (k === 'device') return deviceFolderOpen;
+            if (k === 'hizmet') return hizmetFolderOpen;
+            if (k === 'kilif') return kiliffFolderOpen;
+            if (k === 'cam') return camFolderOpen;
+            if (k === 'sarj') return sarjFolderOpen;
+            if (k === 'kulaklik') return kulaklikFolderOpen;
+            return digerFolderOpen;
+          });
+          await Promise.all(openFolders.map(k => loadFolderProducts(k)));
         } catch (err: unknown) {
           alert(getErrorMessage(err));
         }
@@ -1684,7 +1767,17 @@ export default function DashboardHome() {
 
           await dbService.updateProduct(editProductData.id, prod);
           setShowEditProduct(false);
-          await loadAllData();
+          await loadAllData(true);
+          const openFolders = (['device', 'kilif', 'cam', 'sarj', 'kulaklik', 'hizmet', 'diger'] as const).filter(k => {
+            if (k === 'device') return deviceFolderOpen;
+            if (k === 'hizmet') return hizmetFolderOpen;
+            if (k === 'kilif') return kiliffFolderOpen;
+            if (k === 'cam') return camFolderOpen;
+            if (k === 'sarj') return sarjFolderOpen;
+            if (k === 'kulaklik') return kulaklikFolderOpen;
+            return digerFolderOpen;
+          });
+          await Promise.all(openFolders.map(k => loadFolderProducts(k)));
           alert("Stok kartı başarıyla güncellendi!");
         } catch (err: unknown) {
           alert(getErrorMessage(err));
@@ -3529,11 +3622,27 @@ export default function DashboardHome() {
                     <p className="text-secondary text-xs">Mağazanızdaki kayıtlı ürünleri ve stok miktarlarını yönetin.</p>
                   </div>
                   <button 
-                    onClick={() => setShowAddProduct(true)} 
+                    onClick={() => {
+                      const initialType = inventorySubTab === 'stocked' ? 'Cihaz' : inventorySubTab === 'services' ? 'Hizmet' : 'Ürün';
+                      const initialCat = initialType === 'Cihaz' ? 'Telefon' : initialType === 'Hizmet' ? 'Tamir & Teknik Servis' : 'Telefon Kılıfı';
+                      setNewProduct({
+                        type: initialType,
+                        name: '',
+                        barcode: '',
+                        imei: '',
+                        category: initialCat,
+                        stock: initialType === 'Cihaz' ? '1' : '0',
+                        purchase_price: '',
+                        sale_price: '',
+                        kdv_ratio: '20',
+                        is_no_profit: false
+                      });
+                      setShowAddProduct(true);
+                    }} 
                     className="btn-primary self-start sm:self-center"
                   >
                     <Plus size={16} />
-                    <span>Yeni Ürün Ekle</span>
+                    <span>Yeni Stok Girişi</span>
                   </button>
                 </div>
 
@@ -3586,7 +3695,9 @@ export default function DashboardHome() {
                   <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="glass-panel p-6 w-full max-w-md bg-slate-900 border border-white/10 animate-fade-in text-xs">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-bold text-white">Yeni Stok Girişi</h3>
+                        <h3 className="text-sm font-bold text-white">
+                          {newProduct.type === 'Cihaz' ? '📱 Yeni Stoklu Cihaz Girişi' : newProduct.type === 'Hizmet' ? '🛠️ Yeni Stoksuz Hizmet Girişi' : '📦 Yeni Stoksuz Ürün Girişi'}
+                        </h3>
                         <button onClick={() => setShowAddProduct(false)} className="text-secondary hover:text-white">
                           <X size={16} />
                         </button>
@@ -3696,7 +3807,7 @@ export default function DashboardHome() {
                               />
                             ) : (
                               <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
-                                ℹ️ <strong className="text-amber-300">Stoksuz Ürün</strong> (Stok takibi yapılmaz)
+                                ℹ️ <strong className="text-amber-300">{newProduct.type === 'Hizmet' ? 'Stoksuz Hizmet' : 'Stoksuz Ürün'}</strong> (Stok takibi yapılmaz)
                               </div>
                             )}
                           </div>
@@ -3862,7 +3973,7 @@ export default function DashboardHome() {
                     <Smartphone size={15} />
                     <span>📱 Stoklu Cihazlar (Telefon / Tablet)</span>
                     <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
-                      {folderProducts.device?.length || 0}
+                      {loadedCategories['device'] ? (folderProducts.device?.length || 0) : (metrics.deviceCount ?? 0)}
                     </span>
                   </button>
                   <button
@@ -3876,7 +3987,9 @@ export default function DashboardHome() {
                     <Package size={15} />
                     <span>📦 Stoksuz Ürünler (Aksesuarlar)</span>
                     <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
-                      {(folderProducts.kilif?.length || 0) + (folderProducts.cam?.length || 0) + (folderProducts.sarj?.length || 0) + (folderProducts.kulaklik?.length || 0) + (folderProducts.diger?.length || 0)}
+                      {(loadedCategories['kilif'] || loadedCategories['cam'] || loadedCategories['sarj'] || loadedCategories['kulaklik'] || loadedCategories['diger'])
+                        ? ((folderProducts.kilif?.length || 0) + (folderProducts.cam?.length || 0) + (folderProducts.sarj?.length || 0) + (folderProducts.kulaklik?.length || 0) + (folderProducts.diger?.length || 0))
+                        : (metrics.unstockedCount ?? 0)}
                     </span>
                   </button>
                   <button
@@ -3890,7 +4003,7 @@ export default function DashboardHome() {
                     <Users size={15} />
                     <span>🛠️ Stoksuz Hizmetler (Tamir / Teknik Servis)</span>
                     <span className="bg-cyan-500/20 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
-                      {folderProducts.hizmet?.length || 0}
+                      {loadedCategories['hizmet'] ? (folderProducts.hizmet?.length || 0) : (metrics.serviceCount ?? 0)}
                     </span>
                   </button>
                 </div>
@@ -4096,31 +4209,116 @@ export default function DashboardHome() {
                   return (
                     <div className="flex flex-col gap-4 w-full">
                       {inventorySubTab === 'stocked' ? (
-                        renderFolder({
-                          folderKey: 'device',
-                          title: '📱 Cihazlar / Telefonlar / Tabletler (Stoklu Cihazlar)',
-                          products: folderProducts.device,
-                          isOpen: deviceFolderOpen,
-                          setOpen: setDeviceFolderOpen,
-                          color: 'indigo',
-                          emptyMsg: 'Bu klasörde stoklu cihaz bulunmamaktadır.',
-                          page: pageProdDevice,
-                          setPage: setPageProdDevice
-                        })
+                        <>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/20">
+                            <div>
+                              <h4 className="text-xs font-bold text-indigo-300">📱 Stoklu Cihaz Envanteri</h4>
+                              <p className="text-[11px] text-slate-400">Telefon ve tablet gibi IMEI/seri numarasıyla takip edilen stoklu cihazlar.</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setNewProduct({
+                                  type: 'Cihaz',
+                                  name: '',
+                                  barcode: '',
+                                  imei: '',
+                                  category: 'Telefon',
+                                  stock: '1',
+                                  purchase_price: '',
+                                  sale_price: '',
+                                  kdv_ratio: '20',
+                                  is_no_profit: false
+                                });
+                                setShowAddProduct(true);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer transition-all self-start sm:self-center"
+                            >
+                              <Plus size={14} />
+                              <span>+ Yeni Cihaz Ekle</span>
+                            </button>
+                          </div>
+                          {renderFolder({
+                            folderKey: 'device',
+                            title: '📱 Cihazlar / Telefonlar / Tabletler (Stoklu Cihazlar)',
+                            products: folderProducts.device,
+                            isOpen: deviceFolderOpen,
+                            setOpen: setDeviceFolderOpen,
+                            color: 'indigo',
+                            emptyMsg: 'Bu klasörde stoklu cihaz bulunmamaktadır.',
+                            page: pageProdDevice,
+                            setPage: setPageProdDevice
+                          })}
+                        </>
                       ) : inventorySubTab === 'services' ? (
-                        renderFolder({
-                          folderKey: 'hizmet',
-                          title: '🛠️ Tamir, Teknik Servis & Hizmetler (Stoksuz Hizmet)',
-                          products: folderProducts.hizmet,
-                          isOpen: hizmetFolderOpen,
-                          setOpen: setHizmetFolderOpen,
-                          color: 'cyan',
-                          emptyMsg: 'Bu klasörde hizmet kaydı bulunmamaktadır.',
-                          page: pageProdHizmet,
-                          setPage: setPageProdHizmet
-                        })
+                        <>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/20">
+                            <div>
+                              <h4 className="text-xs font-bold text-cyan-300">🛠️ Stoksuz Hizmet & Teknik Servis Listesi</h4>
+                              <p className="text-[11px] text-slate-400">Tamir, teknik servis, işçilik, kontör ve bakım gibi stok takibi yapılmayan hizmetler.</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setNewProduct({
+                                  type: 'Hizmet',
+                                  name: '',
+                                  barcode: '',
+                                  imei: '',
+                                  category: 'Tamir & Teknik Servis',
+                                  stock: '0',
+                                  purchase_price: '',
+                                  sale_price: '',
+                                  kdv_ratio: '20',
+                                  is_no_profit: false
+                                });
+                                setShowAddProduct(true);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-cyan-600/30 cursor-pointer transition-all self-start sm:self-center"
+                            >
+                              <Plus size={14} />
+                              <span>+ Yeni Hizmet Ekle</span>
+                            </button>
+                          </div>
+                          {renderFolder({
+                            folderKey: 'hizmet',
+                            title: '🛠️ Tamir, Teknik Servis & Hizmetler (Stoksuz Hizmet)',
+                            products: folderProducts.hizmet,
+                            isOpen: hizmetFolderOpen,
+                            setOpen: setHizmetFolderOpen,
+                            color: 'cyan',
+                            emptyMsg: 'Bu klasörde hizmet kaydı bulunmamaktadır.',
+                            page: pageProdHizmet,
+                            setPage: setPageProdHizmet
+                          })}
+                        </>
                       ) : (
                         <>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/20">
+                            <div>
+                              <h4 className="text-xs font-bold text-emerald-300">📦 Stoksuz Aksesuar & Ürün Listesi</h4>
+                              <p className="text-[11px] text-slate-400">Kılıf, cam, şarj, kulaklık ve diğer hızlı satış aksesuarları.</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setNewProduct({
+                                  type: 'Ürün',
+                                  name: '',
+                                  barcode: '',
+                                  imei: '',
+                                  category: 'Telefon Kılıfı',
+                                  stock: '0',
+                                  purchase_price: '',
+                                  sale_price: '',
+                                  kdv_ratio: '20',
+                                  is_no_profit: false
+                                });
+                                setShowAddProduct(true);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer transition-all self-start sm:self-center"
+                            >
+                              <Plus size={14} />
+                              <span>+ Yeni Aksesuar Ekle</span>
+                            </button>
+                          </div>
                           {renderFolder({
                             folderKey: 'kilif',
                             title: 'Telefon Kılıfları (Stoksuz Ürün)',

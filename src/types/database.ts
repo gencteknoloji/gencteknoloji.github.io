@@ -128,6 +128,8 @@ export interface DashboardMetrics {
   totalDeviceStockSale?: number;
   deviceCount?: number;
   totalAccessoryStockCost?: number;
+  unstockedCount?: number;
+  serviceCount?: number;
 }
 
 export interface ChartPoint {
