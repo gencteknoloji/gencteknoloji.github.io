@@ -1523,7 +1523,7 @@ export default function DashboardHome() {
         name: newProduct.name.trim(),
         imei: newProduct.imei && newProduct.imei.trim() !== '' ? newProduct.imei.trim() : null,
         barcode: newProduct.barcode && newProduct.barcode.trim() !== '' ? newProduct.barcode.trim() : null,
-        stock: newProduct.type === 'Cihaz' ? 1 : newProduct.type === 'Hizmet' ? 0 : toInt(newProduct.stock, 0),
+        stock: newProduct.type === 'Hizmet' ? 0 : toInt(newProduct.stock, newProduct.type === 'Cihaz' ? 1 : 0),
         purchase_price: isNoProfit ? (toNum(newProduct.sale_price) || 0) : (toNum(newProduct.purchase_price) || 0),
         sale_price: toNum(newProduct.sale_price) || 0,
         kdv_ratio: toInt(newProduct.kdv_ratio, 20),
@@ -1769,51 +1769,40 @@ export default function DashboardHome() {
     }
   };
 
-  const handleUpdateProduct = (e) => {
+  const handleUpdateProduct = async (e) => {
     e.preventDefault();
-    if (!editProductData.name) return;
+    if (!editProductData.name || !editProductData.name.trim()) {
+      alert("Lütfen ürün veya hizmet adını giriniz.");
+      return;
+    }
 
-    triggerConfirm(
-      'Stok Kartını Güncelle',
-      `"${editProductData.name}" stok kartı bilgilerini güncellemek istediğinize emin misiniz?`,
-      async () => {
-        try {
-          const isNoProfit = Boolean(
-            editProductData.is_no_profit ||
-            editProductData.name.trim().toLowerCase().includes('kontör') ||
-            editProductData.name.trim().toLowerCase().includes('kontor')
-          );
-          const prod = {
-            ...editProductData,
-            imei: editProductData.imei && editProductData.imei.trim() !== '' ? editProductData.imei.trim() : null,
-            barcode: editProductData.barcode && editProductData.barcode.trim() !== '' ? editProductData.barcode.trim() : null,
-            stock: editProductData.type === 'Cihaz' ? 1 : editProductData.type === 'Hizmet' ? 0 : toInt(editProductData.stock),
-            purchase_price: isNoProfit ? (toNum(editProductData.sale_price) || 0) : (toNum(editProductData.purchase_price) || 0),
-            sale_price: toNum(editProductData.sale_price) || 0,
-            kdv_ratio: toInt(editProductData.kdv_ratio, 20),
-            is_no_profit: isNoProfit ? 1 : 0
-          };
+    try {
+      const isNoProfit = Boolean(
+        editProductData.is_no_profit ||
+        editProductData.name.trim().toLowerCase().includes('kontör') ||
+        editProductData.name.trim().toLowerCase().includes('kontor')
+      );
+      const prod = {
+        ...editProductData,
+        name: editProductData.name.trim(),
+        imei: editProductData.imei && editProductData.imei.trim() !== '' ? editProductData.imei.trim() : null,
+        barcode: editProductData.barcode && editProductData.barcode.trim() !== '' ? editProductData.barcode.trim() : null,
+        stock: editProductData.type === 'Hizmet' ? 0 : toInt(editProductData.stock, 0),
+        purchase_price: isNoProfit ? (toNum(editProductData.sale_price) || 0) : (toNum(editProductData.purchase_price) || 0),
+        sale_price: toNum(editProductData.sale_price) || 0,
+        kdv_ratio: toInt(editProductData.kdv_ratio, 20),
+        is_no_profit: isNoProfit ? 1 : 0
+      };
 
-          await dbService.updateProduct(editProductData.id, prod);
-          setShowEditProduct(false);
-          await loadAllData(true);
-          const openFolders = (['device', 'kilif', 'cam', 'sarj', 'kulaklik', 'hizmet', 'diger'] as const).filter(k => {
-            if (k === 'device') return deviceFolderOpen;
-            if (k === 'hizmet') return hizmetFolderOpen;
-            if (k === 'kilif') return kiliffFolderOpen;
-            if (k === 'cam') return camFolderOpen;
-            if (k === 'sarj') return sarjFolderOpen;
-            if (k === 'kulaklik') return kulaklikFolderOpen;
-            return digerFolderOpen;
-          });
-          await Promise.all(openFolders.map(k => loadFolderProducts(k)));
-          alert("Stok kartı başarıyla güncellendi!");
-        } catch (err: unknown) {
-          alert(getErrorMessage(err));
-        }
-      },
-      false
-    );
+      await dbService.updateProduct(editProductData.id, prod);
+      setShowEditProduct(false);
+      await loadAllData(true);
+      const allFolderKeys = ['device', 'kilif', 'cam', 'sarj', 'kulaklik', 'hizmet', 'diger'] as const;
+      await Promise.all(allFolderKeys.filter(k => loadedCategories[k]).map(k => loadFolderProducts(k)));
+      alert("Stok kartı başarıyla güncellendi!");
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
+    }
   };
 
   // Add New Cari
@@ -3825,19 +3814,19 @@ export default function DashboardHome() {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] text-secondary block mb-1">Stok Miktarı</label>
-                            {newProduct.type === 'Cihaz' || newProduct.category === 'Telefon' || newProduct.category === 'Tablet' ? (
+                            {newProduct.type === 'Hizmet' ? (
+                              <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
+                                ℹ️ <strong className="text-amber-300">Hizmet</strong> - Stoksuz
+                              </div>
+                            ) : (
                               <input 
                                 type="number" 
                                 min="0"
-                                placeholder="1" 
+                                placeholder={newProduct.type === 'Cihaz' ? "1" : "0"} 
                                 className="custom-input font-bold"
                                 value={newProduct.stock}
                                 onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
                               />
-                            ) : (
-                              <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
-                                ℹ️ <strong className="text-amber-300">{newProduct.type === 'Hizmet' ? 'Hizmet' : 'Ürün'}</strong>
-                              </div>
                             )}
                           </div>
                           <div>
@@ -4044,7 +4033,7 @@ export default function DashboardHome() {
                       <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
                         <th className="p-3">Kategori</th>
                         <th className="p-3">Ürün / Hizmet Adı</th>
-                        <th className="p-3 text-center">{inventorySubTab === 'stocked' ? 'Stok Miktarı' : 'Stok Durumu'}</th>
+                        <th className="p-3 text-center">{inventorySubTab === 'services' ? 'Durum' : 'Stok Miktarı'}</th>
                         <th className="p-3 text-right">Alış Fiyatı</th>
                         <th className="p-3 text-right">Satış Fiyatı</th>
                         <th className="p-3 text-center">KDV</th>
@@ -4077,23 +4066,17 @@ export default function DashboardHome() {
                           )}
                         </td>
                         <td className="p-3 text-center">
-                          {isStocked ? (
-                            (prod.stock ?? 0) > 0 ? (
-                              <span className="font-bold text-xs text-indigo-400 font-mono">
-                                {prod.stock} <span className="text-[10px] text-muted font-normal">adet</span>
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30">
-                                0 adet (Tükendi / Satıldı)
-                              </span>
-                            )
-                          ) : isService ? (
+                          {isService ? (
                             <span className="px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 text-[10px] font-bold border border-cyan-500/20">
-                              Stoksuz Hizmet
+                              Hizmet
+                            </span>
+                          ) : (prod.stock ?? 0) > 0 ? (
+                            <span className={`font-bold text-xs font-mono ${isStocked ? 'text-indigo-400' : 'text-emerald-400'}`}>
+                              {prod.stock} <span className="text-[10px] text-muted font-normal">adet</span>
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-bold border border-white/10">
-                              Stoksuz Ürün
+                            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30">
+                              0 adet (Tükendi)
                             </span>
                           )}
                         </td>
@@ -6337,19 +6320,19 @@ export default function DashboardHome() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] text-secondary block mb-1">Stok Miktarı</label>
-                  {editProductData.type === 'Cihaz' || editProductData.category === 'Telefon' || editProductData.category === 'Tablet' ? (
+                  {editProductData.type === 'Hizmet' ? (
+                    <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
+                      ℹ️ <strong className="text-amber-300">Hizmet</strong> - Stoksuz
+                    </div>
+                  ) : (
                     <input 
                       type="number" 
                       min="0"
-                      placeholder="1" 
+                      placeholder="0" 
                       className="custom-input font-bold"
                       value={editProductData.stock ?? 0}
                       onChange={(e) => setEditProductData({ ...editProductData, stock: e.target.value })}
                     />
-                  ) : (
-                    <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
-                      ℹ️ <strong className="text-amber-300">{editProductData.type === 'Hizmet' ? 'Hizmet' : 'Ürün'}</strong>
-                    </div>
                   )}
                 </div>
                 <div>
