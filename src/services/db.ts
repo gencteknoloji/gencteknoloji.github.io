@@ -217,7 +217,8 @@ export const dbService = {
       stock: product.type === 'Cihaz' ? 1 : (toInt(product.stock) || 0),
       purchase_price: toNum(product.purchase_price) || 0,
       sale_price: toNum(product.sale_price) || 0,
-      kdv_ratio: toInt(product.kdv_ratio) || 20
+      kdv_ratio: toInt(product.kdv_ratio) || 20,
+      is_no_profit: product.is_no_profit ? 1 : 0
     };
 
     if (barcodeVal) {
@@ -231,9 +232,9 @@ export const dbService = {
     }
 
     await db.run(
-      `INSERT INTO products (id, type, barcode, name, imei, category, stock, purchase_price, sale_price, kdv_ratio)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [newProd.id, newProd.type, newProd.barcode, newProd.name, newProd.imei, newProd.category, newProd.stock, newProd.purchase_price, newProd.sale_price, newProd.kdv_ratio]
+      `INSERT INTO products (id, type, barcode, name, imei, category, stock, purchase_price, sale_price, kdv_ratio, is_no_profit)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [newProd.id, newProd.type, newProd.barcode, newProd.name, newProd.imei, newProd.category, newProd.stock, newProd.purchase_price, newProd.sale_price, newProd.kdv_ratio, newProd.is_no_profit]
     );
     return newProd;
   },
@@ -272,14 +273,15 @@ export const dbService = {
       stock: product.type === 'Cihaz' ? 1 : (toInt(product.stock) || 0),
       purchase_price: toNum(product.purchase_price) || 0,
       sale_price: toNum(product.sale_price) || 0,
-      kdv_ratio: toInt(product.kdv_ratio) || 20
+      kdv_ratio: toInt(product.kdv_ratio) || 20,
+      is_no_profit: product.is_no_profit ? 1 : 0
     };
 
     await db.run(
       `UPDATE products 
-       SET type = ?, barcode = ?, name = ?, imei = ?, category = ?, stock = ?, purchase_price = ?, sale_price = ?, kdv_ratio = ?
+       SET type = ?, barcode = ?, name = ?, imei = ?, category = ?, stock = ?, purchase_price = ?, sale_price = ?, kdv_ratio = ?, is_no_profit = ?
        WHERE id = ?`,
-      [updatedProd.type, updatedProd.barcode, updatedProd.name, updatedProd.imei, updatedProd.category, updatedProd.stock, updatedProd.purchase_price, updatedProd.sale_price, updatedProd.kdv_ratio, id]
+      [updatedProd.type, updatedProd.barcode, updatedProd.name, updatedProd.imei, updatedProd.category, updatedProd.stock, updatedProd.purchase_price, updatedProd.sale_price, updatedProd.kdv_ratio, updatedProd.is_no_profit, id]
     );
 
     return db.get<Product>('SELECT * FROM products WHERE id = ?', [id]);
@@ -356,7 +358,7 @@ export const dbService = {
 
       // Revert stock for the deleted item
       const prod = await db.get<{ type: string }>('SELECT type FROM products WHERE id = ?', [item.product_id]);
-      if (prod && prod.type !== 'Hizmet') {
+      if (prod && prod.type === 'Cihaz') {
         await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
       }
 
@@ -416,7 +418,7 @@ export const dbService = {
 
       // Revert old stock and add new stock difference
       const prod = await db.get<{ type: string }>('SELECT type FROM products WHERE id = ?', [item.product_id]);
-      if (prod && prod.type !== 'Hizmet') {
+      if (prod && prod.type === 'Cihaz') {
         const stockDiff = item.quantity - toInt(newQuantity, 1);
         await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [stockDiff, item.product_id]);
       }
@@ -572,11 +574,16 @@ export const dbService = {
         WHERE prod.type = 'Cihaz'
       `),
       db.get<{ total: number }>(`
-        SELECT COALESCE(SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity), 0) as total 
+        SELECT COALESCE(SUM(
+          CASE 
+            WHEN COALESCE(prod.is_no_profit, 0) = 1 OR LOWER(prod.name) LIKE '%kontör%' OR LOWER(prod.name) LIKE '%kontor%' OR LOWER(s_item.name) LIKE '%kontör%' OR LOWER(s_item.name) LIKE '%kontor%' THEN 0
+            ELSE (s_item.price - COALESCE(prod.purchase_price, 0))
+          END * s_item.quantity
+        ), 0) as total 
         FROM sale_items s_item 
         JOIN products prod ON s_item.product_id = prod.id 
         JOIN sales s ON s_item.sale_id = s.id 
-        WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
+        WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
       `),
       db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [sevenDaysAgoStr]),
       db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [thirtyDaysAgoStr])
@@ -873,11 +880,16 @@ export const dbService = {
             WHERE prod.type = 'Cihaz'
           ), 0),
           'totalAksesuarProfit', COALESCE((
-            SELECT SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity) 
+            SELECT SUM(
+              CASE 
+                WHEN COALESCE(prod.is_no_profit, 0) = 1 OR LOWER(prod.name) LIKE '%kontör%' OR LOWER(prod.name) LIKE '%kontor%' OR LOWER(s_item.name) LIKE '%kontör%' OR LOWER(s_item.name) LIKE '%kontor%' THEN 0
+                ELSE (s_item.price - COALESCE(prod.purchase_price, 0))
+              END * s_item.quantity
+            ) 
             FROM sale_items s_item 
             JOIN products prod ON s_item.product_id = prod.id 
             JOIN sales s ON s_item.sale_id = s.id 
-            WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
+            WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
           ), 0),
           'totalDeviceStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
           'totalDeviceStockSale', COALESCE((SELECT SUM(sale_price * COALESCE(stock, 1)) FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon')), 0),
@@ -1077,26 +1089,34 @@ export const dbService = {
             ), 0) +
             /* 2. Aksesuar Kârı (Hizmet/Tamir Hariç) */
             COALESCE((
-              SELECT SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) 
+              SELECT SUM(
+                CASE 
+                  WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(p.name) LIKE '%kontör%' OR LOWER(p.name) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+                  ELSE (si.price - COALESCE(p.purchase_price, 0))
+                END * si.quantity
+              ) 
               FROM sale_items si 
               JOIN products p ON si.product_id = p.id
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? 
                 AND p.type != 'Cihaz' 
                 AND p.type != 'Hizmet' 
-                AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
-                AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır', 'kontör satışı', 'kontor satisi', 'kontör', 'kontor')
+                AND LOWER(TRIM(p.name)) NOT IN ('tamir', 'tamır')
+                AND LOWER(TRIM(si.name)) NOT IN ('tamir', 'tamır')
             ), 0) +
             /* 3. Teknik Servis Geliri */
             COALESCE((
-              SELECT SUM(si.price * si.quantity) 
+              SELECT SUM(
+                CASE 
+                  WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(p.name) LIKE '%kontör%' OR LOWER(p.name) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+                  ELSE (si.price * si.quantity)
+                END
+              ) 
               FROM sale_items si 
               JOIN products p ON si.product_id = p.id
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? 
                 AND (p.type = 'Hizmet' OR LOWER(TRIM(p.name)) IN ('tamir', 'tamır') OR LOWER(TRIM(si.name)) IN ('tamir', 'tamır'))
-                AND LOWER(TRIM(p.name)) NOT IN ('kontör satışı', 'kontor satisi', 'kontör', 'kontor')
-                AND LOWER(TRIM(si.name)) NOT IN ('kontör satışı', 'kontor satisi', 'kontör', 'kontor')
             ), 0) -
             /* 4. Tüm Giderler */
             COALESCE((
@@ -1138,7 +1158,12 @@ export const dbService = {
           ELSE 'Diğer'
         END as category,
         SUM(si.price * si.quantity) as total_amount,
-        SUM((si.price - COALESCE(p.purchase_price, 0)) * si.quantity) as total_profit
+        SUM(
+          CASE 
+            WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(p.name) LIKE '%kontör%' OR LOWER(p.name) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+            ELSE (si.price - COALESCE(p.purchase_price, 0))
+          END * si.quantity
+        ) as total_profit
       FROM sale_items si
       LEFT JOIN products p ON si.product_id = p.id
       JOIN sales s ON si.sale_id = s.id
