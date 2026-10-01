@@ -522,6 +522,7 @@ export default function DashboardHome() {
   const [saleDate, setSaleDate] = useState(formatDateISO());
 
   // STOK STATE
+  const [inventorySubTab, setInventorySubTab] = useState<'stocked' | 'unstocked'>('stocked');
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showEditProduct, setShowEditProduct] = useState(false);
   const [editProductData, setEditProductData] = useState<EditableProduct | null>(null);
@@ -3689,15 +3690,21 @@ export default function DashboardHome() {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-[10px] text-secondary block mb-1">Adet / Stok</label>
-                            <input 
-                              type="number" 
-                              placeholder="0" 
-                              disabled={newProduct.type === 'Cihaz' || newProduct.type === 'Hizmet'}
-                              className="custom-input"
-                              value={newProduct.type === 'Cihaz' ? '1' : newProduct.type === 'Hizmet' ? '0' : newProduct.stock}
-                              onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                            />
+                            <label className="text-[10px] text-secondary block mb-1">Stok Miktarı</label>
+                            {newProduct.type === 'Cihaz' || newProduct.category === 'Telefon' || newProduct.category === 'Tablet' ? (
+                              <input 
+                                type="number" 
+                                placeholder="1" 
+                                className="custom-input"
+                                value={newProduct.type === 'Cihaz' ? '1' : newProduct.stock}
+                                disabled={newProduct.type === 'Cihaz'}
+                                onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                              />
+                            ) : (
+                              <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
+                                ℹ️ <strong className="text-amber-300">Stoksuz Ürün</strong> (Stok takibi yapılmaz)
+                              </div>
+                            )}
                           </div>
                           <div>
                             <label className="text-[10px] text-secondary block mb-1">KDV Oranı (%)</label>
@@ -3848,6 +3855,38 @@ export default function DashboardHome() {
                   </div>
                 )}
 
+                {/* Sub-tab Navigation: Stoklu vs Stoksuz Envanter */}
+                <div className="flex border-b border-white/10 mb-5 gap-2">
+                  <button
+                    onClick={() => setInventorySubTab('stocked')}
+                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+                      inventorySubTab === 'stocked'
+                        ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10 rounded-t-lg'
+                        : 'border-transparent text-secondary hover:text-white'
+                    }`}
+                  >
+                    <Smartphone size={15} />
+                    <span>Stoklu Ürünler (Cihazlar / Telefonlar / Tabletler)</span>
+                    <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
+                      {folderProducts.device?.length || 0}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setInventorySubTab('unstocked')}
+                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+                      inventorySubTab === 'unstocked'
+                        ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10 rounded-t-lg'
+                        : 'border-transparent text-secondary hover:text-white'
+                    }`}
+                  >
+                    <Package size={15} />
+                    <span>Stoksuz Ürünler (Aksesuarlar & Hizmetler)</span>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
+                      {(folderProducts.kilif?.length || 0) + (folderProducts.cam?.length || 0) + (folderProducts.sarj?.length || 0) + (folderProducts.kulaklik?.length || 0) + (folderProducts.diger?.length || 0)}
+                    </span>
+                  </button>
+                </div>
+
                 {/* Per-category collapsible folders / Search Results */}
                 {(() => {
                   const renderTableHeaders = () => (
@@ -3855,7 +3894,7 @@ export default function DashboardHome() {
                       <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
                         <th className="p-3">Kategori</th>
                         <th className="p-3">Ürün Adı / Model</th>
-                        <th className="p-3 text-center">Stok</th>
+                        <th className="p-3 text-center">{inventorySubTab === 'stocked' ? 'Stok Miktarı' : 'Stok Durumu'}</th>
                         <th className="p-3 text-right">Alış Fiyatı</th>
                         <th className="p-3 text-right">Satış Fiyatı</th>
                         <th className="p-3 text-center">KDV</th>
@@ -3864,69 +3903,75 @@ export default function DashboardHome() {
                     </thead>
                   );
 
-                  const renderRow = (prod) => (
-                    <tr key={prod.id} className="hover:bg-white/1 transition-colors">
-                      <td className="p-3 whitespace-nowrap">
-                        <span className="badge badge-success text-[9px] px-1.5 py-0.5">{prod.category}</span>
-                      </td>
-                      <td className="p-3">
-                        <div className="font-semibold text-white text-xs leading-tight">{prod.name}</div>
-                        {prod.type === 'Cihaz' && prod.imei && (
-                          <div className="text-[10px] font-mono text-indigo-400 mt-0.5">IMEI: {prod.imei}</div>
-                        )}
-                        {prod.barcode && (
-                          <div className="text-[10px] font-mono text-secondary mt-0.5">Barkod: {prod.barcode}</div>
-                        )}
-                        {Boolean(prod.is_no_profit || prod.name?.toUpperCase().includes('KONTÖR') || prod.name?.toUpperCase().includes('KONTOR')) && (
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25">
-                              ⚡ Kârsız Satış (Kâr: %0)
+                  const renderRow = (prod) => {
+                    const isStocked = prod.type === 'Cihaz' || prod.category === 'Telefon' || prod.category === 'Tablet';
+                    return (
+                      <tr key={prod.id} className="hover:bg-white/1 transition-colors">
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="badge badge-success text-[9px] px-1.5 py-0.5">{prod.category}</span>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold text-white text-xs leading-tight">{prod.name}</div>
+                          {prod.type === 'Cihaz' && prod.imei && (
+                            <div className="text-[10px] font-mono text-indigo-400 mt-0.5">IMEI: {prod.imei}</div>
+                          )}
+                          {prod.barcode && (
+                            <div className="text-[10px] font-mono text-secondary mt-0.5">Barkod: {prod.barcode}</div>
+                          )}
+                          {Boolean(prod.is_no_profit || prod.name?.toUpperCase().includes('KONTÖR') || prod.name?.toUpperCase().includes('KONTOR')) && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                                ⚡ Kârsız Satış (Kâr: %0)
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          {isStocked ? (
+                            <span className="font-bold text-xs text-indigo-400 font-mono">
+                              {prod.type === 'Cihaz' ? '1' : prod.stock} <span className="text-[10px] text-muted font-normal">adet</span>
                             </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-bold border border-white/10">
+                              Stoksuz Ürün
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right font-mono text-slate-300 whitespace-nowrap text-xs">
+                          {(prod.purchase_price || 0).toLocaleString('tr-TR')} TL
+                        </td>
+                        <td className="p-3 text-right font-mono font-semibold text-emerald-400 whitespace-nowrap text-xs">
+                          {(prod.sale_price || 0).toLocaleString('tr-TR')} TL
+                        </td>
+                        <td className="p-3 text-center text-xs">
+                          <span className="text-secondary font-mono">{prod.kdv_ratio ?? 20}%</span>
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap">
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              onClick={() => handlePrintBarcode(prod)}
+                              className="px-2 py-1 rounded bg-white/2 hover:bg-white/5 text-[10px] text-white border border-white/5 font-semibold cursor-pointer flex items-center gap-1"
+                            >
+                              <Barcode size={11} />
+                              <span>Barkod</span>
+                            </button>
+                            <button
+                              onClick={() => { setEditProductData(prod); setShowEditProduct(true); }}
+                              className="px-2 py-1 rounded bg-white/2 hover:bg-white/5 text-[10px] text-white border border-white/5 font-semibold cursor-pointer"
+                            >
+                              Düzenle
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(prod.id, prod.name)}
+                              className="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-[10px] text-rose-400 border border-rose-500/20 font-semibold cursor-pointer"
+                            >
+                              Sil
+                            </button>
                           </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className={`font-bold text-xs ${
-                          prod.type === 'Cihaz' ? 'text-indigo-400' : prod.stock < 5 ? 'text-red-400' : 'text-emerald-400'
-                        }`}>
-                          {prod.type === 'Cihaz' ? '1' : prod.stock}
-                        </span>
-                        <span className="text-[10px] text-muted ml-1">adet</span>
-                      </td>
-                      <td className="p-3 text-right font-mono text-slate-300 whitespace-nowrap text-xs">
-                        {(prod.purchase_price || 0).toLocaleString('tr-TR')} TL
-                      </td>
-                      <td className="p-3 text-right font-mono font-semibold text-emerald-400 whitespace-nowrap text-xs">
-                        {(prod.sale_price || 0).toLocaleString('tr-TR')} TL
-                      </td>
-                      <td className="p-3 text-center text-xs">
-                        <span className="text-secondary font-mono">{prod.kdv_ratio ?? 20}%</span>
-                      </td>
-                      <td className="p-3 text-right whitespace-nowrap">
-                        <div className="flex justify-end gap-1.5">
-                          <button
-                            onClick={() => handlePrintBarcode(prod)}
-                            className="px-2 py-1 rounded bg-white/2 hover:bg-white/5 text-[10px] text-white border border-white/5 font-semibold cursor-pointer flex items-center gap-1"
-                          >
-                            <Barcode size={11} />
-                            <span>Barkod</span>
-                          </button>
-                          <button
-                            onClick={() => { setEditProductData(prod); setShowEditProduct(true); }}
-                            className="px-2 py-1 rounded bg-white/2 hover:bg-white/5 text-[10px] text-white border border-white/5 font-semibold cursor-pointer"
-                          >
-                            Düzenle
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                            className="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-[10px] text-rose-400 border border-rose-500/20 font-semibold cursor-pointer"
-                          >
-                            Sil
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
+                        </td>
+                      </tr>
+                    );
+                  };
 
                   // If searching, show flat list of search results
                   if (globalProductSearch.trim() !== '') {
@@ -4039,72 +4084,77 @@ export default function DashboardHome() {
 
                   return (
                     <div className="flex flex-col gap-4 w-full">
-                      {renderFolder({
-                        folderKey: 'device',
-                        title: 'Cihazlar / Telefonlar / Tabletler',
-                        products: folderProducts.device,
-                        isOpen: deviceFolderOpen,
-                        setOpen: setDeviceFolderOpen,
-                        color: 'indigo',
-                        emptyMsg: 'Bu klasörde cihaz bulunmamaktadır.',
-                        page: pageProdDevice,
-                        setPage: setPageProdDevice
-                      })}
-                      {renderFolder({
-                        folderKey: 'kilif',
-                        title: 'Telefon Kılıfları',
-                        products: folderProducts.kilif,
-                        isOpen: kiliffFolderOpen,
-                        setOpen: setKiliffFolderOpen,
-                        color: 'emerald',
-                        emptyMsg: 'Bu klasörde kılıf bulunmamaktadır.',
-                        page: pageProdKilif,
-                        setPage: setPageProdKilif
-                      })}
-                      {renderFolder({
-                        folderKey: 'cam',
-                        title: 'Telefon Kırılmaz Camları',
-                        products: folderProducts.cam,
-                        isOpen: camFolderOpen,
-                        setOpen: setCamFolderOpen,
-                        color: 'sky',
-                        emptyMsg: 'Bu klasörde cam bulunmamaktadır.',
-                        page: pageProdCam,
-                        setPage: setPageProdCam
-                      })}
-                      {renderFolder({
-                        folderKey: 'sarj',
-                        title: 'Şarj Cihazları ve Kablolar',
-                        products: folderProducts.sarj,
-                        isOpen: sarjFolderOpen,
-                        setOpen: setSarjFolderOpen,
-                        color: 'amber',
-                        emptyMsg: 'Bu klasörde şarj ürünü bulunmamaktadır.',
-                        page: pageProdSarj,
-                        setPage: setPageProdSarj
-                      })}
-                      {renderFolder({
-                        folderKey: 'kulaklik',
-                        title: 'Bluetooth Kulaklıklar',
-                        products: folderProducts.kulaklik,
-                        isOpen: kulaklikFolderOpen,
-                        setOpen: setKulaklikFolderOpen,
-                        color: 'purple',
-                        emptyMsg: 'Bu klasörde kulaklık bulunmamaktadır.',
-                        page: pageProdKulaklik,
-                        setPage: setPageProdKulaklik
-                      })}
-                      {renderFolder({
-                        folderKey: 'diger',
-                        title: 'Diğer Ürünler',
-                        products: folderProducts.diger,
-                        isOpen: digerFolderOpen,
-                        setOpen: setDigerFolderOpen,
-                        color: 'slate',
-                        emptyMsg: 'Bu klasörde ürün bulunmamaktadır.',
-                        page: pageProdDiger,
-                        setPage: setPageProdDiger
-                      })}
+                      {inventorySubTab === 'stocked' ? (
+                        renderFolder({
+                          folderKey: 'device',
+                          title: '📱 Cihazlar / Telefonlar / Tabletler (Stoklu Ürünler)',
+                          products: folderProducts.device,
+                          isOpen: deviceFolderOpen,
+                          setOpen: setDeviceFolderOpen,
+                          color: 'indigo',
+                          emptyMsg: 'Bu klasörde stoklu cihaz bulunmamaktadır.',
+                          page: pageProdDevice,
+                          setPage: setPageProdDevice
+                        })
+                      ) : (
+                        <>
+                          {renderFolder({
+                            folderKey: 'kilif',
+                            title: 'Telefon Kılıfları (Stoksuz)',
+                            products: folderProducts.kilif,
+                            isOpen: kiliffFolderOpen,
+                            setOpen: setKiliffFolderOpen,
+                            color: 'emerald',
+                            emptyMsg: 'Bu klasörde kılıf bulunmamaktadır.',
+                            page: pageProdKilif,
+                            setPage: setPageProdKilif
+                          })}
+                          {renderFolder({
+                            folderKey: 'cam',
+                            title: 'Telefon Kırılmaz Camları (Stoksuz)',
+                            products: folderProducts.cam,
+                            isOpen: camFolderOpen,
+                            setOpen: setCamFolderOpen,
+                            color: 'sky',
+                            emptyMsg: 'Bu klasörde cam bulunmamaktadır.',
+                            page: pageProdCam,
+                            setPage: setPageProdCam
+                          })}
+                          {renderFolder({
+                            folderKey: 'sarj',
+                            title: 'Şarj Cihazları ve Kablolar (Stoksuz)',
+                            products: folderProducts.sarj,
+                            isOpen: sarjFolderOpen,
+                            setOpen: setSarjFolderOpen,
+                            color: 'amber',
+                            emptyMsg: 'Bu klasörde şarj ürünü bulunmamaktadır.',
+                            page: pageProdSarj,
+                            setPage: setPageProdSarj
+                          })}
+                          {renderFolder({
+                            folderKey: 'kulaklik',
+                            title: 'Bluetooth Kulaklıklar (Stoksuz)',
+                            products: folderProducts.kulaklik,
+                            isOpen: kulaklikFolderOpen,
+                            setOpen: setKulaklikFolderOpen,
+                            color: 'purple',
+                            emptyMsg: 'Bu klasörde kulaklık bulunmamaktadır.',
+                            page: pageProdKulaklik,
+                            setPage: setPageProdKulaklik
+                          })}
+                          {renderFolder({
+                            folderKey: 'diger',
+                            title: 'Diğer Ürünler & Hizmetler (Stoksuz)',
+                            products: folderProducts.diger,
+                            isOpen: digerFolderOpen,
+                            setOpen: setDigerFolderOpen,
+                            color: 'slate',
+                            emptyMsg: 'Bu klasörde ürün bulunmamaktadır.',
+                            page: pageProdDiger,
+                            setPage: setPageProdDiger
+                          })}
+                        </>
+                      )}
                     </div>
                   );
                 })()}
@@ -6024,15 +6074,21 @@ export default function DashboardHome() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] text-secondary block mb-1">Adet / Stok</label>
-                  <input 
-                    type="number" 
-                    placeholder="0" 
-                    disabled={editProductData.type === 'Cihaz' || editProductData.type === 'Hizmet'}
-                    className="custom-input"
-                    value={editProductData.type === 'Cihaz' ? 1 : editProductData.type === 'Hizmet' ? 0 : editProductData.stock}
-                    onChange={(e) => setEditProductData({ ...editProductData, stock: e.target.value })}
-                  />
+                  <label className="text-[10px] text-secondary block mb-1">Stok Miktarı</label>
+                  {editProductData.type === 'Cihaz' || editProductData.category === 'Telefon' || editProductData.category === 'Tablet' ? (
+                    <input 
+                      type="number" 
+                      placeholder="1" 
+                      disabled={editProductData.type === 'Cihaz'}
+                      className="custom-input"
+                      value={editProductData.type === 'Cihaz' ? 1 : editProductData.stock}
+                      onChange={(e) => setEditProductData({ ...editProductData, stock: e.target.value })}
+                    />
+                  ) : (
+                    <div className="p-2 rounded bg-slate-800/80 border border-white/10 text-[9px] text-slate-400 font-semibold leading-tight">
+                      ℹ️ <strong className="text-amber-300">Stoksuz Ürün</strong> (Stok takibi yapılmaz)
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] text-secondary block mb-1">KDV Oranı (%)</label>
