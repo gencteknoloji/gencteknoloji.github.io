@@ -431,6 +431,7 @@ export default function DashboardHome() {
   const [pageProdCam, setPageProdCam] = useState(1);
   const [pageProdSarj, setPageProdSarj] = useState(1);
   const [pageProdKulaklik, setPageProdKulaklik] = useState(1);
+  const [pageProdHizmet, setPageProdHizmet] = useState(1);
   const [pageProdDiger, setPageProdDiger] = useState(1);
 
   const renderPagination = (currentPage: number, totalItems: number, onPageChange: (page: number) => void, pageSize = 10) => {
@@ -522,7 +523,7 @@ export default function DashboardHome() {
   const [saleDate, setSaleDate] = useState(formatDateISO());
 
   // STOK STATE
-  const [inventorySubTab, setInventorySubTab] = useState<'stocked' | 'unstocked'>('stocked');
+  const [inventorySubTab, setInventorySubTab] = useState<'stocked' | 'unstocked' | 'services'>('stocked');
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showEditProduct, setShowEditProduct] = useState(false);
   const [editProductData, setEditProductData] = useState<EditableProduct | null>(null);
@@ -533,6 +534,7 @@ export default function DashboardHome() {
   const [camFolderOpen, setCamFolderOpen] = useState(false);
   const [sarjFolderOpen, setSarjFolderOpen] = useState(false);
   const [kulaklikFolderOpen, setKulaklikFolderOpen] = useState(false);
+  const [hizmetFolderOpen, setHizmetFolderOpen] = useState(false);
   const [digerFolderOpen, setDigerFolderOpen] = useState(false);
   const [physicalCash, setPhysicalCash] = useState('');
   const [physicalCard, setPhysicalCard] = useState('');
@@ -547,6 +549,7 @@ export default function DashboardHome() {
     cam: [],
     sarj: [],
     kulaklik: [],
+    hizmet: [],
     diger: []
   });
   const [folderLoading, setFolderLoading] = useState<Record<string, boolean>>({});
@@ -3855,34 +3858,48 @@ export default function DashboardHome() {
                   </div>
                 )}
 
-                {/* Sub-tab Navigation: Stoklu vs Stoksuz Envanter */}
-                <div className="flex border-b border-white/10 mb-5 gap-2">
+                {/* Sub-tab Navigation: Stoklu Cihazlar / Stoksuz Ürünler / Stoksuz Hizmetler */}
+                <div className="flex border-b border-white/10 mb-5 gap-2 overflow-x-auto">
                   <button
                     onClick={() => setInventorySubTab('stocked')}
-                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                       inventorySubTab === 'stocked'
                         ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10 rounded-t-lg'
                         : 'border-transparent text-secondary hover:text-white'
                     }`}
                   >
                     <Smartphone size={15} />
-                    <span>Stoklu Ürünler (Cihazlar / Telefonlar / Tabletler)</span>
+                    <span>📱 Stoklu Cihazlar (Telefon / Tablet)</span>
                     <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
                       {folderProducts.device?.length || 0}
                     </span>
                   </button>
                   <button
                     onClick={() => setInventorySubTab('unstocked')}
-                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                       inventorySubTab === 'unstocked'
                         ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10 rounded-t-lg'
                         : 'border-transparent text-secondary hover:text-white'
                     }`}
                   >
                     <Package size={15} />
-                    <span>Stoksuz Ürünler (Aksesuarlar & Hizmetler)</span>
+                    <span>📦 Stoksuz Ürünler (Aksesuarlar)</span>
                     <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
                       {(folderProducts.kilif?.length || 0) + (folderProducts.cam?.length || 0) + (folderProducts.sarj?.length || 0) + (folderProducts.kulaklik?.length || 0) + (folderProducts.diger?.length || 0)}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setInventorySubTab('services')}
+                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                      inventorySubTab === 'services'
+                        ? 'border-cyan-500 text-cyan-400 bg-cyan-500/10 rounded-t-lg'
+                        : 'border-transparent text-secondary hover:text-white'
+                    }`}
+                  >
+                    <Users size={15} />
+                    <span>🛠️ Stoksuz Hizmetler (Tamir / Teknik Servis)</span>
+                    <span className="bg-cyan-500/20 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
+                      {folderProducts.hizmet?.length || 0}
                     </span>
                   </button>
                 </div>
@@ -3893,7 +3910,7 @@ export default function DashboardHome() {
                     <thead>
                       <tr className="border-b border-white/5 text-muted font-semibold bg-white/1">
                         <th className="p-3">Kategori</th>
-                        <th className="p-3">Ürün Adı / Model</th>
+                        <th className="p-3">Ürün / Hizmet Adı</th>
                         <th className="p-3 text-center">{inventorySubTab === 'stocked' ? 'Stok Miktarı' : 'Stok Durumu'}</th>
                         <th className="p-3 text-right">Alış Fiyatı</th>
                         <th className="p-3 text-right">Satış Fiyatı</th>
@@ -3905,10 +3922,13 @@ export default function DashboardHome() {
 
                   const renderRow = (prod) => {
                     const isStocked = prod.type === 'Cihaz' || prod.category === 'Telefon' || prod.category === 'Tablet';
+                    const isService = prod.type === 'Hizmet' || prod.category === 'Tamir & Teknik Servis';
                     return (
                       <tr key={prod.id} className="hover:bg-white/1 transition-colors">
                         <td className="p-3 whitespace-nowrap">
-                          <span className="badge badge-success text-[9px] px-1.5 py-0.5">{prod.category}</span>
+                          <span className={`badge text-[9px] px-1.5 py-0.5 ${isStocked ? 'badge-success' : isService ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}>
+                            {prod.category}
+                          </span>
                         </td>
                         <td className="p-3">
                           <div className="font-semibold text-white text-xs leading-tight">{prod.name}</div>
@@ -3930,6 +3950,10 @@ export default function DashboardHome() {
                           {isStocked ? (
                             <span className="font-bold text-xs text-indigo-400 font-mono">
                               {prod.type === 'Cihaz' ? '1' : prod.stock} <span className="text-[10px] text-muted font-normal">adet</span>
+                            </span>
+                          ) : isService ? (
+                            <span className="px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 text-[10px] font-bold border border-cyan-500/20">
+                              Stoksuz Hizmet
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-bold border border-white/10">
@@ -4028,6 +4052,12 @@ export default function DashboardHome() {
                       icon: 'p-2 rounded bg-purple-500/10 text-purple-400',
                       count: 'text-[10px] text-purple-300/80 font-semibold',
                     },
+                    cyan: {
+                      wrapper: 'glass-panel p-0 overflow-hidden border border-cyan-500/10 shadow-lg',
+                      btn: 'w-full flex items-center justify-between p-3.5 bg-cyan-950/20 hover:bg-cyan-900/20 transition-colors border-b border-white/5 cursor-pointer',
+                      icon: 'p-2 rounded bg-cyan-500/10 text-cyan-400',
+                      count: 'text-[10px] text-cyan-300/80 font-semibold',
+                    },
                     slate: {
                       wrapper: 'glass-panel p-0 overflow-hidden border border-slate-500/10 shadow-lg',
                       btn: 'w-full flex items-center justify-between p-3.5 bg-slate-800/30 hover:bg-slate-700/30 transition-colors border-b border-white/5 cursor-pointer',
@@ -4037,10 +4067,10 @@ export default function DashboardHome() {
                   };
 
                   const renderFolder = ({ folderKey, title, products, isOpen, setOpen, color, emptyMsg, page, setPage }) => {
-                    const s = folderStyles[color];
+                    const s = folderStyles[color] || folderStyles.slate;
                     const isLoading = folderLoading[folderKey];
                     const isLoaded = loadedCategories[folderKey];
-                    const slicedProducts = products.slice((page - 1) * 10, page * 10);
+                    const slicedProducts = (products || []).slice((page - 1) * 10, page * 10);
                     
                     return (
                       <div className={s.wrapper}>
@@ -4051,7 +4081,7 @@ export default function DashboardHome() {
                             </div>
                             <div className="text-left">
                               <h3 className="font-bold text-white text-xs">{title}</h3>
-                              <span className={s.count}>{isLoaded ? `${products.length} adet` : 'Yüklemek için tıklayın'}</span>
+                              <span className={s.count}>{isLoaded ? `${(products || []).length} adet` : 'Yüklemek için tıklayın'}</span>
                             </div>
                           </div>
                           <div className="text-secondary flex items-center gap-2">
@@ -4063,7 +4093,7 @@ export default function DashboardHome() {
                           <div className="animate-fade-in overflow-x-auto">
                             {isLoading ? (
                               <div className="text-center py-6 text-secondary text-xs">Veriler yükleniyor...</div>
-                            ) : products.length === 0 ? (
+                            ) : (products || []).length === 0 ? (
                               <div className="text-center py-4 text-secondary text-xs">{emptyMsg}</div>
                             ) : (
                               <>
@@ -4073,7 +4103,7 @@ export default function DashboardHome() {
                                     {slicedProducts.map(renderRow)}
                                   </tbody>
                                 </table>
-                                {renderPagination(page, products.length, setPage)}
+                                {renderPagination(page, (products || []).length, setPage)}
                               </>
                             )}
                           </div>
@@ -4087,7 +4117,7 @@ export default function DashboardHome() {
                       {inventorySubTab === 'stocked' ? (
                         renderFolder({
                           folderKey: 'device',
-                          title: '📱 Cihazlar / Telefonlar / Tabletler (Stoklu Ürünler)',
+                          title: '📱 Cihazlar / Telefonlar / Tabletler (Stoklu Cihazlar)',
                           products: folderProducts.device,
                           isOpen: deviceFolderOpen,
                           setOpen: setDeviceFolderOpen,
@@ -4096,11 +4126,23 @@ export default function DashboardHome() {
                           page: pageProdDevice,
                           setPage: setPageProdDevice
                         })
+                      ) : inventorySubTab === 'services' ? (
+                        renderFolder({
+                          folderKey: 'hizmet',
+                          title: '🛠️ Tamir, Teknik Servis & Hizmetler (Stoksuz Hizmet)',
+                          products: folderProducts.hizmet,
+                          isOpen: hizmetFolderOpen,
+                          setOpen: setHizmetFolderOpen,
+                          color: 'cyan',
+                          emptyMsg: 'Bu klasörde hizmet kaydı bulunmamaktadır.',
+                          page: pageProdHizmet,
+                          setPage: setPageProdHizmet
+                        })
                       ) : (
                         <>
                           {renderFolder({
                             folderKey: 'kilif',
-                            title: 'Telefon Kılıfları (Stoksuz)',
+                            title: 'Telefon Kılıfları (Stoksuz Ürün)',
                             products: folderProducts.kilif,
                             isOpen: kiliffFolderOpen,
                             setOpen: setKiliffFolderOpen,
@@ -4111,7 +4153,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'cam',
-                            title: 'Telefon Kırılmaz Camları (Stoksuz)',
+                            title: 'Telefon Kırılmaz Camları (Stoksuz Ürün)',
                             products: folderProducts.cam,
                             isOpen: camFolderOpen,
                             setOpen: setCamFolderOpen,
@@ -4122,7 +4164,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'sarj',
-                            title: 'Şarj Cihazları ve Kablolar (Stoksuz)',
+                            title: 'Şarj Cihazları ve Kablolar (Stoksuz Ürün)',
                             products: folderProducts.sarj,
                             isOpen: sarjFolderOpen,
                             setOpen: setSarjFolderOpen,
@@ -4133,7 +4175,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'kulaklik',
-                            title: 'Bluetooth Kulaklıklar (Stoksuz)',
+                            title: 'Bluetooth Kulaklıklar (Stoksuz Ürün)',
                             products: folderProducts.kulaklik,
                             isOpen: kulaklikFolderOpen,
                             setOpen: setKulaklikFolderOpen,
@@ -4144,7 +4186,7 @@ export default function DashboardHome() {
                           })}
                           {renderFolder({
                             folderKey: 'diger',
-                            title: 'Diğer Ürünler & Hizmetler (Stoksuz)',
+                            title: 'Diğer Ürünler (Stoksuz Ürün)',
                             products: folderProducts.diger,
                             isOpen: digerFolderOpen,
                             setOpen: setDigerFolderOpen,

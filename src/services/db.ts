@@ -1003,7 +1003,7 @@ export const dbService = {
     };
   },
 
-  async getProductsByFolder(folder: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'diger'): Promise<Product[]> {
+  async getProductsByFolder(folder: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'hizmet' | 'diger'): Promise<Product[]> {
     if (folder === 'device') {
       return db.all<Product>("SELECT * FROM products WHERE type = 'Cihaz' OR category IN ('Tablet', 'Telefon') ORDER BY name ASC");
     } else if (folder === 'kilif') {
@@ -1014,11 +1014,13 @@ export const dbService = {
       return db.all<Product>("SELECT * FROM products WHERE category IN ('Şarj Cihazı', 'Şarj Kablosu') ORDER BY name ASC");
     } else if (folder === 'kulaklik') {
       return db.all<Product>("SELECT * FROM products WHERE category = 'Bluetooth Kulaklık' ORDER BY name ASC");
+    } else if (folder === 'hizmet') {
+      return db.all<Product>("SELECT * FROM products WHERE type = 'Hizmet' OR category IN ('Tamir & Teknik Servis', 'İşçilik & Hizmet', 'Hizmet') ORDER BY name ASC");
     } else {
       return db.all<Product>(`
         SELECT * FROM products 
-        WHERE type != 'Cihaz' 
-          AND category NOT IN ('Tablet', 'Telefon', 'Telefon Kılıfı', 'Telefon Kırılmaz Camı', 'Şarj Cihazı', 'Şarj Kablosu', 'Bluetooth Kulaklık')
+        WHERE type NOT IN ('Cihaz', 'Hizmet') 
+          AND category NOT IN ('Tablet', 'Telefon', 'Telefon Kılıfı', 'Telefon Kırılmaz Camı', 'Şarj Cihazı', 'Şarj Kablosu', 'Bluetooth Kulaklık', 'Tamir & Teknik Servis', 'İşçilik & Hizmet', 'Hizmet')
         ORDER BY name ASC
       `);
     }
