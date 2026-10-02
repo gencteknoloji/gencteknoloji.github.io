@@ -1102,7 +1102,7 @@ export const dbService = {
             COALESCE((
               SELECT SUM(
                 CASE 
-                  WHEN COALESCE(p.is_no_profit, false) = true OR LOWER(COALESCE(p.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(p.name, '')) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+                  WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(COALESCE(p.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(p.name, '')) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
                   ELSE (si.price - COALESCE(NULLIF(si.purchase_price, 0), p.purchase_price, 0))
                 END * si.quantity
               ) 
@@ -1121,7 +1121,7 @@ export const dbService = {
             COALESCE((
               SELECT SUM(
                 CASE 
-                  WHEN COALESCE(p.is_no_profit, false) = true OR LOWER(COALESCE(p.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(p.name, '')) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+                  WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(COALESCE(p.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(p.name, '')) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
                   ELSE (si.price - COALESCE(NULLIF(si.purchase_price, 0), p.purchase_price, 0)) * si.quantity
                 END
               ) 
