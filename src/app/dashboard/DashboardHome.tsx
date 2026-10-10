@@ -1382,7 +1382,7 @@ export default function DashboardHome() {
     const exists = saleItems.find(item => item.product_id === prod.id);
     const newQty = exists ? exists.quantity + 1 : 1;
 
-    const displayName = (prod.type === 'Cihaz' || ['Telefon', 'Tablet'].includes(prod.category)) && prod.imei
+    const displayName = (prod.type === 'Cihaz' || ['Telefon', 'Tablet', 'Akıllı Saat', '2. El Cihaz', '2. El Cihaz Satışı'].includes(prod.category)) && prod.imei
       ? (prod.name.includes(prod.imei) ? prod.name : `${prod.name} (IMEI: ${prod.imei})`)
       : prod.name;
 
@@ -1547,7 +1547,7 @@ export default function DashboardHome() {
 
       // Determine folder key for the created product
       let folderKeyToOpen: 'device' | 'kilif' | 'cam' | 'sarj' | 'kulaklik' | 'hizmet' | 'diger' = 'diger';
-      if (prod.type === 'Cihaz' || ['Tablet', 'Telefon'].includes(prod.category)) {
+      if (prod.type === 'Cihaz' || ['Tablet', 'Telefon', 'Akıllı Saat', '2. El Cihaz', '2. El Cihaz Satışı'].includes(prod.category)) {
         folderKeyToOpen = 'device';
         setInventorySubTab('stocked');
         setDeviceFolderOpen(true);
@@ -2452,7 +2452,7 @@ export default function DashboardHome() {
                                       key={prod.id}
                                       type="button"
                                       onClick={() => {
-                                        const displayName = (prod.type === 'Cihaz' || ['Telefon', 'Tablet'].includes(prod.category)) && prod.imei
+                                        const displayName = (prod.type === 'Cihaz' || ['Telefon', 'Tablet', 'Akıllı Saat', '2. El Cihaz', '2. El Cihaz Satışı'].includes(prod.category)) && prod.imei
                                           ? (prod.name.includes(prod.imei) ? prod.name : `${prod.name} (IMEI: ${prod.imei})`)
                                           : prod.name;
                                         setManualItem({
@@ -3769,6 +3769,8 @@ export default function DashboardHome() {
                               >
                                 <option value="Telefon">Telefon</option>
                                 <option value="Tablet">Tablet</option>
+                                <option value="Akıllı Saat">Akıllı Saat</option>
+                                <option value="2. El Cihaz Satışı">2. El Cihaz Satışı</option>
                                 <option value="Diğer">Diğer</option>
                               </select>
                             ) : newProduct.type === 'Hizmet' ? (
@@ -4058,7 +4060,7 @@ export default function DashboardHome() {
                   );
 
                   const renderRow = (prod) => {
-                    const isStocked = prod.type === 'Cihaz' || prod.category === 'Telefon' || prod.category === 'Tablet';
+                    const isStocked = prod.type === 'Cihaz' || ['Telefon', 'Tablet', 'Akıllı Saat', '2. El Cihaz', '2. El Cihaz Satışı'].includes(prod.category);
                     const isService = prod.type === 'Hizmet' || prod.category === 'Tamir & Teknik Servis';
                     return (
                       <tr key={prod.id} className="hover:bg-white/1 transition-colors">
@@ -4246,7 +4248,7 @@ export default function DashboardHome() {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/20">
                             <div>
                               <h4 className="text-xs font-bold text-indigo-300">📱 Cihazlar</h4>
-                              <p className="text-[11px] text-slate-400">Telefon ve tablet gibi IMEI/seri numarasıyla takip edilen stoklu cihazlar.</p>
+                              <p className="text-[11px] text-slate-400">Telefon, tablet, akıllı saat ve 2. el cihazlar gibi IMEI/seri numarasıyla takip edilen stoklu cihazlar.</p>
                             </div>
                             <button
                               onClick={() => {
@@ -6275,6 +6277,8 @@ export default function DashboardHome() {
                     >
                       <option value="Telefon">Telefon</option>
                       <option value="Tablet">Tablet</option>
+                      <option value="Akıllı Saat">Akıllı Saat</option>
+                      <option value="2. El Cihaz Satışı">2. El Cihaz Satışı</option>
                       <option value="Diğer">Diğer</option>
                     </select>
                   ) : editProductData.type === 'Hizmet' ? (
