@@ -124,20 +124,22 @@ function BarcodeSVG({ value }: { value: string }) {
 
 const normalizeString = (str: unknown) => {
   if (!str) return '';
-  let lower = '';
-  try {
-    lower = str.toString().toLocaleLowerCase('tr-TR');
-  } catch (e: unknown) {
-    lower = str.toString().toLowerCase();
-  }
-  return lower
+  return String(str)
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
     .replace(/ı/g, 'i')
+    .replace(/Ş/g, 's')
     .replace(/ş/g, 's')
+    .replace(/Ğ/g, 'g')
     .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ö/g, 'o')
+    .replace(/Ç/g, 'c')
     .replace(/ç/g, 'c')
-    .toLowerCase();
+    .replace(/Ö/g, 'o')
+    .replace(/ö/g, 'o')
+    .replace(/Ü/g, 'u')
+    .replace(/ü/g, 'u')
+    .toLowerCase()
+    .trim();
 };
 
 const ALL_TABS = [
@@ -1414,15 +1416,15 @@ export default function DashboardHome() {
 
     if (!targetProductId || targetProductId === 'manual') {
       const cleanInput = manualItem.name.trim();
-      const cleanName = cleanInput.toLowerCase();
+      const cleanName = normalizeString(cleanInput);
       const matched = checkoutProducts.find(p => 
         (p.imei && (p.imei.trim() === cleanInput || cleanInput.includes(p.imei.trim()))) ||
         (p.barcode && p.barcode.trim() === cleanInput) ||
-        p.name.trim().toLowerCase() === cleanName
+        normalizeString(p.name) === cleanName
       ) || products.find(p => 
         (p.imei && (p.imei.trim() === cleanInput || cleanInput.includes(p.imei.trim()))) ||
         (p.barcode && p.barcode.trim() === cleanInput) ||
-        p.name.trim().toLowerCase() === cleanName
+        normalizeString(p.name) === cleanName
       );
       if (matched) {
         targetProductId = matched.id;

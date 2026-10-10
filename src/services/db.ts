@@ -1040,12 +1040,18 @@ export const dbService = {
         .replace(/İ/g, 'i')
         .replace(/I/g, 'i')
         .replace(/ı/g, 'i')
-        .replace(/Ş/g, 's').replace(/ş/g, 's')
-        .replace(/Ğ/g, 'g').replace(/ğ/g, 'g')
-        .replace(/Ç/g, 'c').replace(/ç/g, 'c')
-        .replace(/Ö/g, 'o').replace(/ö/g, 'o')
-        .replace(/Ü/g, 'u').replace(/ü/g, 'u')
-        .toLowerCase();
+        .replace(/Ş/g, 's')
+        .replace(/ş/g, 's')
+        .replace(/Ğ/g, 'g')
+        .replace(/ğ/g, 'g')
+        .replace(/Ç/g, 'c')
+        .replace(/ç/g, 'c')
+        .replace(/Ö/g, 'o')
+        .replace(/ö/g, 'o')
+        .replace(/Ü/g, 'u')
+        .replace(/ü/g, 'u')
+        .toLowerCase()
+        .trim();
     };
 
     const term = normalize(query.trim());
