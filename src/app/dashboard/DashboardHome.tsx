@@ -876,6 +876,8 @@ export default function DashboardHome() {
       } else if (reportFilterRange === 'this_month') {
         const limitDate = new Date(today.getFullYear(), today.getMonth(), 1);
         startDateStr = formatDateISO(limitDate);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        endDateStr = formatDateISO(lastDay);
       } else if (reportFilterRange === 'general') {
         startDateStr = '2000-01-01';
         endDateStr = '2100-12-31';
@@ -920,6 +922,8 @@ export default function DashboardHome() {
       } else if (reportFilterRange === 'this_month') {
         const limitDate = new Date(today.getFullYear(), today.getMonth(), 1);
         startDateStr = formatDateISO(limitDate);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        endDateStr = formatDateISO(lastDay);
       } else if (reportFilterRange === 'general') {
         startDateStr = '2000-01-01';
         endDateStr = '2100-12-31';

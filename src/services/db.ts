@@ -567,23 +567,29 @@ export const dbService = {
       db.get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) as total FROM turkcell_premiums'),
       db.get<{ total: number }>("SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE category = 'Genel Gider' OR category IS NULL"),
       db.get<{ total: number }>(`
-        SELECT COALESCE(SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity), 0) as total 
+        SELECT COALESCE(SUM((s_item.price - COALESCE(NULLIF(s_item.purchase_price, 0), prod.purchase_price, 0)) * s_item.quantity), 0) as total 
         FROM sale_items s_item 
-        JOIN products prod ON s_item.product_id = prod.id 
+        LEFT JOIN products prod ON s_item.product_id = prod.id 
         JOIN sales s ON s_item.sale_id = s.id 
-        WHERE prod.type = 'Cihaz'
+        WHERE (prod.type = 'Cihaz' OR s_item.imei IS NOT NULL OR s_item.name LIKE '%(IMEI:%' OR prod.category IN ('Telefon', 'Tablet', 'Cihaz'))
       `),
       db.get<{ total: number }>(`
         SELECT COALESCE(SUM(
           CASE 
-            WHEN COALESCE(prod.is_no_profit, 0) = 1 OR LOWER(prod.name) LIKE '%kontör%' OR LOWER(prod.name) LIKE '%kontor%' OR LOWER(s_item.name) LIKE '%kontör%' OR LOWER(s_item.name) LIKE '%kontor%' THEN 0
-            ELSE (s_item.price - COALESCE(prod.purchase_price, 0))
+            WHEN COALESCE(prod.is_no_profit, 0) = 1 OR LOWER(COALESCE(prod.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(prod.name, '')) LIKE '%kontor%' OR LOWER(s_item.name) LIKE '%kontör%' OR LOWER(s_item.name) LIKE '%kontor%' THEN 0
+            ELSE (s_item.price - COALESCE(NULLIF(s_item.purchase_price, 0), prod.purchase_price, 0))
           END * s_item.quantity
         ), 0) as total 
         FROM sale_items s_item 
-        JOIN products prod ON s_item.product_id = prod.id 
+        LEFT JOIN products prod ON s_item.product_id = prod.id 
         JOIN sales s ON s_item.sale_id = s.id 
-        WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
+        WHERE (prod.type IS NULL OR (prod.type != 'Cihaz' AND prod.type != 'Hizmet'))
+          AND s_item.imei IS NULL AND s_item.name NOT LIKE '%(IMEI:%'
+          AND (prod.category IS NULL OR prod.category NOT IN ('Telefon', 'Tablet', 'Cihaz'))
+          AND LOWER(TRIM(COALESCE(prod.name, ''))) NOT IN ('tamir', 'tamır')
+          AND LOWER(TRIM(COALESCE(s_item.name, ''))) NOT IN ('tamir', 'tamır')
+          AND LOWER(TRIM(COALESCE(s_item.name, ''))) NOT LIKE '%tamir%'
+          AND LOWER(TRIM(COALESCE(s_item.name, ''))) NOT LIKE '%servis%'
       `),
       db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [sevenDaysAgoStr]),
       db.all<{ date: string; total: number }>('SELECT date, SUM(total_amount) as total FROM sales WHERE date >= ? GROUP BY date', [thirtyDaysAgoStr])
@@ -873,23 +879,29 @@ export const dbService = {
           'totalTurkcellProfit', COALESCE((SELECT SUM(amount) FROM turkcell_premiums), 0),
           'totalExpenses', COALESCE((SELECT SUM(amount) FROM expenses WHERE category = 'Genel Gider' OR category IS NULL), 0),
           'totalCihazProfit', COALESCE((
-            SELECT SUM((s_item.price - COALESCE(prod.purchase_price, 0)) * s_item.quantity) 
+            SELECT SUM((s_item.price - COALESCE(NULLIF(s_item.purchase_price, 0), prod.purchase_price, 0)) * s_item.quantity) 
             FROM sale_items s_item 
-            JOIN products prod ON s_item.product_id = prod.id 
+            LEFT JOIN products prod ON s_item.product_id = prod.id 
             JOIN sales s ON s_item.sale_id = s.id 
-            WHERE prod.type = 'Cihaz'
+            WHERE (prod.type = 'Cihaz' OR s_item.imei IS NOT NULL OR s_item.name LIKE '%(IMEI:%' OR prod.category IN ('Telefon', 'Tablet', 'Cihaz'))
           ), 0),
           'totalAksesuarProfit', COALESCE((
             SELECT SUM(
               CASE 
-                WHEN COALESCE(prod.is_no_profit, 0) = 1 OR LOWER(prod.name) LIKE '%kontör%' OR LOWER(prod.name) LIKE '%kontor%' OR LOWER(s_item.name) LIKE '%kontör%' OR LOWER(s_item.name) LIKE '%kontor%' THEN 0
-                ELSE (s_item.price - COALESCE(prod.purchase_price, 0))
+                WHEN COALESCE(prod.is_no_profit, 0) = 1 OR LOWER(COALESCE(prod.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(prod.name, '')) LIKE '%kontor%' OR LOWER(s_item.name) LIKE '%kontör%' OR LOWER(s_item.name) LIKE '%kontor%' THEN 0
+                ELSE (s_item.price - COALESCE(NULLIF(s_item.purchase_price, 0), prod.purchase_price, 0))
               END * s_item.quantity
             ) 
             FROM sale_items s_item 
-            JOIN products prod ON s_item.product_id = prod.id 
+            LEFT JOIN products prod ON s_item.product_id = prod.id 
             JOIN sales s ON s_item.sale_id = s.id 
-            WHERE prod.type != 'Cihaz' AND LOWER(TRIM(prod.name)) NOT IN ('tamir', 'tamır')
+            WHERE (prod.type IS NULL OR (prod.type != 'Cihaz' AND prod.type != 'Hizmet'))
+              AND s_item.imei IS NULL AND s_item.name NOT LIKE '%(IMEI:%'
+              AND (prod.category IS NULL OR prod.category NOT IN ('Telefon', 'Tablet', 'Cihaz'))
+              AND LOWER(TRIM(COALESCE(prod.name, ''))) NOT IN ('tamir', 'tamır')
+              AND LOWER(TRIM(COALESCE(s_item.name, ''))) NOT IN ('tamir', 'tamır')
+              AND LOWER(TRIM(COALESCE(s_item.name, ''))) NOT LIKE '%tamir%'
+              AND LOWER(TRIM(COALESCE(s_item.name, ''))) NOT LIKE '%servis%'
           ), 0),
           'totalDeviceStockCost', COALESCE((SELECT SUM(purchase_price * COALESCE(stock, 0)) FROM products WHERE (type = 'Cihaz' OR category IN ('Tablet', 'Telefon', 'Akıllı Saat', '2. El Cihaz', '2. El Cihaz Satışı')) AND COALESCE(stock, 0) > 0), 0),
           'totalDeviceStockSale', COALESCE((SELECT SUM(sale_price * COALESCE(stock, 0)) FROM products WHERE (type = 'Cihaz' OR category IN ('Tablet', 'Telefon', 'Akıllı Saat', '2. El Cihaz', '2. El Cihaz Satışı')) AND COALESCE(stock, 0) > 0), 0),
@@ -1075,7 +1087,7 @@ export const dbService = {
             LEFT JOIN products p ON si.product_id = p.id
             JOIN sales s ON si.sale_id = s.id
             WHERE s.date >= ? AND s.date <= ? 
-              AND (p.type = 'Cihaz' OR si.imei IS NOT NULL OR si.name LIKE '%(IMEI:%')
+              AND (p.type = 'Cihaz' OR si.imei IS NOT NULL OR si.name LIKE '%(IMEI:%' OR p.category IN ('Telefon', 'Tablet', 'Cihaz'))
           ), 0),
           'aksesuarSales', COALESCE((
             SELECT SUM(si.price * si.quantity) 
@@ -1085,6 +1097,7 @@ export const dbService = {
             WHERE s.date >= ? AND s.date <= ? 
               AND (p.type IS NULL OR (p.type != 'Cihaz' AND p.type != 'Hizmet'))
               AND si.imei IS NULL AND si.name NOT LIKE '%(IMEI:%'
+              AND (p.category IS NULL OR p.category NOT IN ('Telefon', 'Tablet', 'Cihaz'))
               AND LOWER(TRIM(COALESCE(p.name, ''))) NOT IN ('tamir', 'tamır')
               AND LOWER(TRIM(COALESCE(si.name, ''))) NOT IN ('tamir', 'tamır')
               AND LOWER(TRIM(COALESCE(si.name, ''))) NOT LIKE '%tamir%'
@@ -1102,7 +1115,7 @@ export const dbService = {
               LEFT JOIN products p ON si.product_id = p.id
               JOIN sales s ON si.sale_id = s.id
               WHERE s.date >= ? AND s.date <= ? 
-                AND (p.type = 'Cihaz' OR si.imei IS NOT NULL OR si.name LIKE '%(IMEI:%')
+                AND (p.type = 'Cihaz' OR si.imei IS NOT NULL OR si.name LIKE '%(IMEI:%' OR p.category IN ('Telefon', 'Tablet', 'Cihaz'))
             ), 0) +
             /* 2. Aksesuar Kârı (Hizmet/Tamir Hariç) */
             COALESCE((
@@ -1118,6 +1131,7 @@ export const dbService = {
               WHERE s.date >= ? AND s.date <= ? 
                 AND (p.type IS NULL OR (p.type != 'Cihaz' AND p.type != 'Hizmet'))
                 AND si.imei IS NULL AND si.name NOT LIKE '%(IMEI:%'
+                AND (p.category IS NULL OR p.category NOT IN ('Telefon', 'Tablet', 'Cihaz'))
                 AND LOWER(TRIM(COALESCE(p.name, ''))) NOT IN ('tamir', 'tamır')
                 AND LOWER(TRIM(COALESCE(si.name, ''))) NOT IN ('tamir', 'tamır')
                 AND LOWER(TRIM(COALESCE(si.name, ''))) NOT LIKE '%tamir%'
@@ -1178,15 +1192,16 @@ export const dbService = {
     const salesSql = `
       SELECT 
         CASE 
-          WHEN p.category IS NOT NULL THEN p.category
-          WHEN LOWER(TRIM(si.name)) LIKE '%tamir%' OR LOWER(TRIM(si.name)) LIKE '%servis%' THEN 'Teknik Servis Geliri'
+          WHEN p.type = 'Cihaz' OR si.imei IS NOT NULL OR si.name LIKE '%(IMEI:%' OR p.category IN ('Telefon', 'Tablet', 'Cihaz') THEN 'Cihaz'
+          WHEN p.type = 'Hizmet' OR LOWER(TRIM(COALESCE(p.name, ''))) IN ('tamir', 'tamır') OR LOWER(TRIM(COALESCE(si.name, ''))) IN ('tamir', 'tamır') OR LOWER(TRIM(COALESCE(si.name, ''))) LIKE '%tamir%' OR LOWER(TRIM(COALESCE(si.name, ''))) LIKE '%servis%' THEN 'Tamir & Teknik Servis'
+          WHEN p.category IS NOT NULL THEN (CASE WHEN p.category LIKE 'Di%' THEN 'Diğer' ELSE p.category END)
           ELSE 'Diğer'
         END as category,
         SUM(si.price * si.quantity) as total_amount,
         SUM(
           CASE 
-            WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(p.name) LIKE '%kontör%' OR LOWER(p.name) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
-            ELSE (si.price - COALESCE(p.purchase_price, 0))
+            WHEN COALESCE(p.is_no_profit, 0) = 1 OR LOWER(COALESCE(p.name, '')) LIKE '%kontör%' OR LOWER(COALESCE(p.name, '')) LIKE '%kontor%' OR LOWER(si.name) LIKE '%kontör%' OR LOWER(si.name) LIKE '%kontor%' THEN 0
+            ELSE (si.price - COALESCE(NULLIF(si.purchase_price, 0), p.purchase_price, 0))
           END * si.quantity
         ) as total_profit
       FROM sale_items si
