@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Genç Teknoloji Bilişim Hizmetleri",
+  "short_name": "Genç Teknoloji",
+  "description": "Turkcell Dijital Satış Noktası | DNS EXTRA — Cihaz, tarife ve teknik servis",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#060913",
+  "theme_color": "#060913",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

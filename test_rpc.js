@@ -1,0 +1,1 @@
+const url='https://lsttulczgrzksenqzhkw.supabase.co/rest/v1/rpc/delete_sale_item_atomic'; const key='sb_publishable_nRjkdcRthTCjz7YEyg6_Cg_4IvONKw1'; fetch(url, {method: 'POST', headers: {'apikey': key, 'Authorization': 'Bearer '+key}}).then(r= 

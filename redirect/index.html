@@ -8,11 +8,11 @@
 <link rel="canonical" href="https://kutra.vercel.app/">
 <meta http-equiv="refresh" content="0; url=https://kutra.vercel.app/">
 <script>
-  // Old ERP paths (/dashboard, /erp) land on the new ERP; everything else keeps its path, query and hash.
+  // Old ERP paths (/dashboard, /erp) land on the sign-in page; everything else keeps its path, query and hash.
   (function () {
     var base = 'https://kutra.vercel.app';
     var p = location.pathname;
-    if (/^\/(dashboard|erp)(\/|$)/.test(p)) p = '/erp';
+    if (/^\/(dashboard|erp)(\/|$)/.test(p)) p = '/login';
     location.replace(base + p + location.search + location.hash);
   })();
 </script>
