@@ -8,17 +8,15 @@
 <link rel="canonical" href="https://kutra.vercel.app/">
 <meta http-equiv="refresh" content="0; url=https://kutra.vercel.app/">
 <script>
-  // Old ERP paths (/dashboard, /erp) land on the sign-in page; everything else keeps its path, query and hash.
+  // Old panel paths (/dashboard, /erp) go to sign-in; everything else keeps its path, query and hash.
   (function () {
-    var base = 'https://kutra.vercel.app';
     var p = location.pathname;
     if (/^\/(dashboard|erp)(\/|$)/.test(p)) p = '/login';
-    location.replace(base + p + location.search + location.hash);
+    location.replace('https://kutra.vercel.app' + p + location.search + location.hash);
   })();
 </script>
-<style>body{font:15px/1.6 system-ui,sans-serif;background:#fdfdfb;color:#14181e;display:grid;place-items:center;min-height:100vh;margin:0}a{color:#c0392b}</style>
 </head>
 <body>
-<p>Bu site taşındı: <a href="https://kutra.vercel.app/">kutra.vercel.app</a></p>
+<p>Yönlendiriliyor: <a href="https://kutra.vercel.app/">kutra.vercel.app</a></p>
 </body>
 </html>
