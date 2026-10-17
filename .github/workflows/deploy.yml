@@ -15,7 +15,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
-# The site moved to Vercel (gencteknoloji/genva). Pages now only serves a redirect.
+# The site moved to Vercel (gencteknoloji/kutra). Pages only serves a redirect to https://kutra.vercel.app.
 jobs:
   build:
     runs-on: ubuntu-latest

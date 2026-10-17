@@ -1,31 +1,8 @@
-> **Taşındı:** Proje artık [gencteknoloji/genva](https://github.com/gencteknoloji/genva) reposunda ve Vercel üzerinde: https://genva-alpha.vercel.app — bu repodaki GitHub Pages yalnızca yeni adrese yönlendirir (`redirect/`).
+# gencteknoloji.github.io
 
-# Genç Teknoloji
+Bu repo artık yalnızca yönlendirme yapar. Proje **Kutra** adıyla taşındı:
 
-Turkcell dijital satış noktası web sitesi ve ERP dashboard (Next.js static export, GitHub Pages).
+- Site: https://kutra.vercel.app
+- Kod: https://github.com/gencteknoloji/kutra
 
-## Kurulum
-
-```bash
-cp .env.example .env
-npm install
-npm run dev
-```
-
-## Ortam değişkenleri
-
-| Değişken | Açıklama |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase proje URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
-
-Production deploy için GitHub Actions secrets olarak tanımlayın.
-
-## Komutlar
-
-```bash
-npm run dev      # geliştirme
-npm run build    # static export → out/
-npm run lint     # eslint
-npm run clean    # build cache temizliği
-```
+GitHub Pages, `redirect/` klasöründeki sayfayı yayınlar; her yol `kutra.vercel.app` üzerindeki aynı yola, `/dashboard` ve `/erp` yolları `/erp`'ye gider. Eski kaynak kod Git geçmişinde durur.
