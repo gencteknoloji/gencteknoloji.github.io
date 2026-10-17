@@ -1,4 +1,4 @@
-name: Deploy Next.js to GitHub Pages
+name: Deploy redirect to GitHub Pages
 
 on:
   push:
@@ -15,6 +15,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+# The site moved to Vercel (gencteknoloji/genva). Pages now only serves a redirect.
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,28 +23,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build with Next.js
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-        run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out
+          path: ./redirect
 
   deploy:
     environment:

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genç Teknoloji taşındı</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://genva-alpha.vercel.app/">
+<meta http-equiv="refresh" content="0; url=https://genva-alpha.vercel.app/">
+<script>
+  // Old ERP paths (/dashboard, /erp) land on the new ERP; everything else keeps its path, query and hash.
+  (function () {
+    var base = 'https://genva-alpha.vercel.app';
+    var p = location.pathname;
+    if (/^\/(dashboard|erp)(\/|$)/.test(p)) p = '/erp';
+    location.replace(base + p + location.search + location.hash);
+  })();
+</script>
+<style>body{font:15px/1.6 system-ui,sans-serif;background:#fdfdfb;color:#14181e;display:grid;place-items:center;min-height:100vh;margin:0}a{color:#c0392b}</style>
+</head>
+<body>
+<p>Genç Teknoloji yeni adresine taşındı: <a href="https://genva-alpha.vercel.app/">genva-alpha.vercel.app</a></p>
+</body>
+</html>

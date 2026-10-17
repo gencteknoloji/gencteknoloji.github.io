@@ -1,3 +1,5 @@
+> **Taşındı:** Proje artık [gencteknoloji/genva](https://github.com/gencteknoloji/genva) reposunda ve Vercel üzerinde: https://genva-alpha.vercel.app — bu repodaki GitHub Pages yalnızca yeni adrese yönlendirir (`redirect/`).
+
 # Genç Teknoloji
 
 Turkcell dijital satış noktası web sitesi ve ERP dashboard (Next.js static export, GitHub Pages).
